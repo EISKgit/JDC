@@ -94,6 +94,34 @@ class MockProvider(AIProvider):
                 f"Current challenges: {context.get('challenges') or 'none noted'}."
             )
 
+        if kind == "forecast":
+            category = context.get("category", "this category")
+            direction = context.get("direction", "stable")
+            horizon = context.get("horizon_days", 7)
+            if direction == "insufficient_evidence":
+                return f"Not enough data yet to forecast {category} — keep logging updates."
+            pct = context.get("pct_change")
+            pct_text = f" ({pct:+.0f}% vs. the previous period)" if pct is not None else ""
+            return (
+                f"{category.capitalize()} activity is {direction}{pct_text}. "
+                f"If this pattern continues, it is likely to remain {direction} "
+                f"over the next {horizon} days ({context.get('confidence', 'medium')} confidence)."
+            )
+
+        if kind == "warning":
+            return (
+                f"{context.get('category', 'This area')} signal: "
+                f"{context.get('negative_count', 0)} negative updates in the last "
+                f"{context.get('period_days', 14)} days. Consider reviewing recent patterns here."
+            )
+
+        if kind == "recommendation":
+            return (
+                f"Your {context.get('category', 'lowest')} score is currently "
+                f"{context.get('score', '?')}/100 and trending {context.get('trend', 'stable')}. "
+                "Consider a small, consistent action in this area this week."
+            )
+
         total = context.get("total_events", 0)
         counts: dict[str, int] = context.get("category_counts", {})
         if not counts:
