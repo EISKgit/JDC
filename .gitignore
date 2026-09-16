@@ -35,6 +35,9 @@ frontend/build/
 # Docker
 docker-compose.override.yml
 
+# Local-only product docs and learning notes (not pushed to GitHub)
+_docs/
+
 # IDE / OS
 .vscode/
 .idea/
