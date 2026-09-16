@@ -1,4 +1,4 @@
-# ILC frontend
+# JDC frontend
 
 React + TypeScript + Vite. Talks to the [backend](../backend) at
 `VITE_API_BASE_URL` (see `.env.example`), defaulting to

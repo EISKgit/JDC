@@ -1,4 +1,4 @@
-# ILC — Intelligent Life Companion
+# JDC — Just a Daily Companion
 
 A personal life intelligence application. Users write natural-language updates about
 their lives; the system converts those updates into structured events, tracks life

@@ -14,7 +14,7 @@ export function NavBar() {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">ILC</span>
+      <span className="navbar-brand">JDC</span>
       <NavLink to="/dashboard" className={({ isActive }) => (isActive ? "active" : "")}>
         Dashboard
       </NavLink>

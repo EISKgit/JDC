@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # App
-    app_name: str = "Intelligent Life Companion API"
+    app_name: str = "JDC — Just a Daily Companion API"
     api_v1_prefix: str = "/api/v1"
 
     # Database

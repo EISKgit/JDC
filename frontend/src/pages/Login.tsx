@@ -28,7 +28,7 @@ export function Login() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>Intelligent Life Companion</h1>
+        <h1>JDC — Just a Daily Companion</h1>
         <p className="auth-subtitle">Log in to continue</p>
         <label>
           Email
