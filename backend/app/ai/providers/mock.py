@@ -1,0 +1,113 @@
+import re
+from typing import Any
+
+from app.ai.providers.base import AIProvider
+from app.models.enums import Category
+
+# category -> (keywords to match in a sentence, event "type" label to assign)
+_CATEGORY_RULES: list[tuple[Category, list[str], str]] = [
+    (Category.health, ["gym", "workout", "exercise", "ran ", "run ", "walk", "yoga", "sleep", "doctor", "sick"], "exercise"),
+    (Category.career, ["work", "project", "meeting", "coding", "code", "job", "interview", "deadline", "client", "presentation"], "work_activity"),
+    (Category.finance, ["spent", "spend", "bought", "buy", "expense", "paid", "salary", "saved", "budget", "₹", "$"], "expense"),
+    (Category.relationships, ["friend", "family", "argument", "fight", "dinner with", "partner", "mom", "dad", "relationship"], "social_interaction"),
+    (Category.learning, ["learned", "studying", "study", "course", "read", "book", "tutorial", "class"], "learning_activity"),
+    (Category.personal_growth, ["meditat", "journal", "reflect", "therapy", "mindful"], "reflection"),
+    (Category.lifestyle, ["movie", "travel", "trip", "hobby", "cooked", "cleaned", "shopping", "party"], "general_activity"),
+]
+
+_NEGATIVE_WORDS = ["skipped", "missed", "tired", "stressed", "argument", "fight", "bad", "sad", "anxious", "exhausted", "sick"]
+_POSITIVE_WORDS = ["great", "good", "enjoyed", "happy", "proud", "finished", "accomplished", "productive", "fun", "relaxing"]
+
+_AMOUNT_RE = re.compile(r"[₹$]\s?(\d+(?:\.\d+)?)")
+_DURATION_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(hours?|hrs?|minutes?|mins?)", re.IGNORECASE)
+
+
+def _split_sentences(text: str) -> list[str]:
+    parts = re.split(r"[.!?\n]+", text)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _sentiment(sentence: str) -> str:
+    lower = sentence.lower()
+    if any(w in lower for w in _NEGATIVE_WORDS):
+        return "negative"
+    if any(w in lower for w in _POSITIVE_WORDS):
+        return "positive"
+    return "neutral"
+
+
+def _duration_minutes(sentence: str) -> int | None:
+    match = _DURATION_RE.search(sentence)
+    if not match:
+        return None
+    value = float(match.group(1))
+    unit = match.group(2).lower()
+    return int(value * 60) if unit.startswith("h") else int(value)
+
+
+class MockProvider(AIProvider):
+    """Deterministic, rule-based stand-in for a real LLM.
+
+    Needs no API key and produces stable output, so the whole app is runnable
+    and demoable out of the box. Swap AI_PROVIDER=openai in .env for real
+    model-generated extraction/narratives without touching any business logic.
+    """
+
+    def extract_events(self, update_text: str) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
+        for sentence in _split_sentences(update_text):
+            lower = sentence.lower()
+            category, event_type, confidence = None, "general_activity", 0.4
+            for cat, keywords, type_label in _CATEGORY_RULES:
+                if any(k in lower for k in keywords):
+                    category, event_type, confidence = cat, type_label, 0.9
+                    break
+            if category is None:
+                category = Category.lifestyle
+
+            event: dict[str, Any] = {
+                "category": category.value,
+                "type": event_type,
+                "description": sentence,
+                "sentiment": _sentiment(sentence),
+                "confidence": confidence,
+            }
+
+            amount_match = _AMOUNT_RE.search(sentence)
+            if amount_match:
+                event["amount"] = float(amount_match.group(1))
+                event["currency"] = "INR" if "₹" in sentence else "USD"
+
+            duration = _duration_minutes(sentence)
+            if duration is not None:
+                event["duration_minutes"] = duration
+
+            events.append(event)
+        return events
+
+    def generate_narrative(self, *, kind: str, context: dict[str, Any]) -> str:
+        if kind == "life_profile":
+            categories = ", ".join(context.get("focus_categories", [])) or "your life areas"
+            return (
+                f"Focused on {categories}. "
+                f"Goals: {context.get('goals_text') or 'not specified yet'}. "
+                f"Current challenges: {context.get('challenges') or 'none noted'}."
+            )
+
+        total = context.get("total_events", 0)
+        counts: dict[str, int] = context.get("category_counts", {})
+        if not counts:
+            return f"No activity recorded for this {context.get('period', 'period')} yet."
+
+        top_category = max(counts, key=counts.get)
+        parts = [
+            f"{total} event(s) logged this {context.get('period', 'period')}, "
+            f"mostly in {top_category} ({counts[top_category]})."
+        ]
+        deltas: dict[str, int] = context.get("category_deltas", {})
+        for cat, delta in deltas.items():
+            if delta > 0:
+                parts.append(f"{cat} activity increased by {delta} compared to the previous period.")
+            elif delta < 0:
+                parts.append(f"{cat} activity decreased by {abs(delta)} compared to the previous period.")
+        return " ".join(parts)

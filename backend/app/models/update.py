@@ -25,3 +25,6 @@ class Update(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="updates")  # noqa: F821
+    events: Mapped[list["Event"]] = relationship(  # noqa: F821
+        back_populates="update", cascade="all, delete-orphan", order_by="Event.id"
+    )

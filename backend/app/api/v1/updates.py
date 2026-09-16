@@ -1,11 +1,18 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.ai.factory import get_ai_provider
+from app.ai.providers.base import AIProvider, AIProviderError
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.update import Update
 from app.models.user import User
 from app.schemas.update import UpdateCreate, UpdateOut
+from app.services.event_extraction import extract_and_store_events
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/updates", tags=["updates"])
 
@@ -15,11 +22,21 @@ def create_update(
     payload: UpdateCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    ai_provider: AIProvider = Depends(get_ai_provider),
 ) -> Update:
+    # The user's raw words are the source of truth and are saved first —
+    # AI extraction is best-effort on top and must never risk losing the update.
     update = Update(user_id=current_user.id, content=payload.content)
     db.add(update)
     db.commit()
     db.refresh(update)
+
+    try:
+        extract_and_store_events(db, update, ai_provider)
+        db.refresh(update)
+    except AIProviderError:
+        logger.warning("Event extraction failed for update %s", update.id, exc_info=True)
+
     return update
 
 
