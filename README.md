@@ -361,11 +361,20 @@ schemas: `http://localhost:8000/docs`.
 
 ## Test
 
-**There is no automated test suite yet** — this is the most important gap called
-out in the [Roadmap](#roadmap). Everything built so far has instead been verified
-manually with real requests during development (see `_docs/learning/` for the exact
-commands and outputs from each phase). Until an automated suite exists, use the
-same approach to sanity-check the backend after a change:
+The backend has a starter `pytest` suite covering auth (register/login/`me`,
+password rules, case-insensitive emails) and the deterministic scoring formulas.
+Tests run against a throwaway SQLite database, so your dev `ilc.db` is never touched:
+
+```
+cd backend
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt   # Windows
+.venv/Scripts/python.exe -m pytest
+```
+
+Coverage is still thin — updates, extraction, and the intelligence endpoints are
+verified manually with real requests (see `_docs/learning/` for the exact commands
+and outputs from each phase). Use the same approach to sanity-check the backend
+after a change:
 
 ```
 # from backend/, with the server running on :8000
@@ -399,8 +408,8 @@ This does **not** verify the UI actually renders/behaves correctly in a browser 
 there's no browser automation set up in this repo. Manually click through
 `npm run dev` → `http://localhost:5173` after any frontend change.
 
-Planned for the "Polish" roadmap phase: `pytest` for the backend (services and API
-routes) and `vitest`/Playwright for the frontend.
+Planned for the "Polish" roadmap phase: broader `pytest` coverage for the backend
+(remaining services and API routes) and `vitest`/Playwright for the frontend.
 
 ## Roadmap
 

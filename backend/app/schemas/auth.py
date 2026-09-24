@@ -1,17 +1,26 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+def _normalize_email(value: str) -> str:
+    return value.strip().lower()
 
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    # bcrypt only uses the first 72 bytes of a password, so cap it there.
+    password: str = Field(min_length=8, max_length=72)
     full_name: str | None = None
+
+    _normalize = field_validator("email", mode="before")(_normalize_email)
 
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+    _normalize = field_validator("email", mode="before")(_normalize_email)
 
 
 class UserOut(BaseModel):

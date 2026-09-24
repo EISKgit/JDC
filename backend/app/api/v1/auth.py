@@ -100,7 +100,7 @@ async def google_callback(code: str, db: Session = Depends(get_db)) -> Token:
         profile = userinfo_response.json()
 
     google_id = profile["sub"]
-    email = profile["email"]
+    email = profile["email"].strip().lower()
 
     user = db.query(User).filter(User.google_id == google_id).first()
     if not user:
