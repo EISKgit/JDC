@@ -397,19 +397,25 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/updates \
 curl -s http://127.0.0.1:8000/api/v1/dashboard -H "Authorization: Bearer $TOKEN"
 ```
 
-For the frontend, run a type-check + production build to catch compile errors:
+The frontend has a starter [Vitest](https://vitest.dev) suite in `frontend/tests/`
+covering the API client (auth header, error handling, 204s) and the
+`ProtectedRoute` login redirect. It runs in a simulated browser (jsdom) with
+`fetch` mocked, so the backend doesn't need to be running:
 
 ```
 cd frontend
-npm run build
+npm test              # run once
+npm run test:watch    # re-run on file changes
+npm run build         # type-check (including tests) + production build
 ```
 
-This does **not** verify the UI actually renders/behaves correctly in a browser —
-there's no browser automation set up in this repo. Manually click through
-`npm run dev` → `http://localhost:5173` after any frontend change.
+This does **not** verify the real UI in a browser — there's no browser automation
+set up in this repo. Manually click through `npm run dev` →
+`http://localhost:5173` after any frontend change.
 
 Planned for the "Polish" roadmap phase: broader `pytest` coverage for the backend
-(remaining services and API routes) and `vitest`/Playwright for the frontend.
+(remaining services and API routes), more Vitest page tests, and Playwright for
+end-to-end browser tests.
 
 ## Roadmap
 
