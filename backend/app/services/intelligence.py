@@ -19,6 +19,10 @@ PERIOD_DAYS = {"daily": 1, "weekly": 7, "monthly": 30}
 PERIOD_LABELS = {"daily": "day", "weekly": "week", "monthly": "month"}
 NEGATIVE_WARNING_THRESHOLD = 3
 EVIDENCE_CAP = 5
+NO_DATA_RECOMMENDATION = (
+    "Log your first update on the Updates page — once there's some activity, "
+    "you'll get a recommendation based on it."
+)
 
 
 def _focus_categories(user: User) -> list[str]:
@@ -156,11 +160,16 @@ def generate_dashboard(db: Session, user: User, ai_provider: AIProvider) -> Dash
     weekly = generate_period_summary(db, user, "weekly", ai_provider)
     forecast_7day = generate_forecasts(db, user, ai_provider, horizon_days=7)
 
-    lowest = min(weekly.category_scores, key=lambda cs: cs.score)
-    recommendation = ai_provider.generate_narrative(
-        kind="recommendation",
-        context={"category": lowest.category.value, "score": lowest.score, "trend": lowest.trend},
-    )
+    if weekly.total_events == 0:
+        # Every category sits at the neutral baseline, so "lowest" would just be
+        # whichever comes first — don't dress that up as a real recommendation.
+        recommendation = NO_DATA_RECOMMENDATION
+    else:
+        lowest = min(weekly.category_scores, key=lambda cs: cs.score)
+        recommendation = ai_provider.generate_narrative(
+            kind="recommendation",
+            context={"category": lowest.category.value, "score": lowest.score, "trend": lowest.trend},
+        )
 
     return DashboardOut(
         overall_score=weekly.overall_score,

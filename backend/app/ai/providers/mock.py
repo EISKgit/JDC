@@ -36,6 +36,17 @@ def _sentiment(sentence: str) -> str:
     return "neutral"
 
 
+def _label(category: str) -> str:
+    """Turn an enum value like "personal_growth" into "personal growth"."""
+    return category.replace("_", " ")
+
+
+def _trend_phrase(trend: str) -> str:
+    if trend == "insufficient_evidence":
+        return "doesn't have enough data to show a trend yet"
+    return f"is trending {trend}"
+
+
 def _duration_minutes(sentence: str) -> int | None:
     match = _DURATION_RE.search(sentence)
     if not match:
@@ -95,7 +106,7 @@ class MockProvider(AIProvider):
             )
 
         if kind == "forecast":
-            category = context.get("category", "this category")
+            category = _label(context.get("category", "this category"))
             direction = context.get("direction", "stable")
             horizon = context.get("horizon_days", 7)
             if direction == "insufficient_evidence":
@@ -110,15 +121,15 @@ class MockProvider(AIProvider):
 
         if kind == "warning":
             return (
-                f"{context.get('category', 'This area')} signal: "
+                f"{_label(context.get('category', 'This area')).capitalize()} signal: "
                 f"{context.get('negative_count', 0)} negative updates in the last "
                 f"{context.get('period_days', 14)} days. Consider reviewing recent patterns here."
             )
 
         if kind == "recommendation":
             return (
-                f"Your {context.get('category', 'lowest')} score is currently "
-                f"{context.get('score', '?')}/100 and trending {context.get('trend', 'stable')}. "
+                f"Your {_label(context.get('category', 'lowest'))} score is currently "
+                f"{context.get('score', '?')}/100 and {_trend_phrase(context.get('trend', 'stable'))}. "
                 "Consider a small, consistent action in this area this week."
             )
 
@@ -130,12 +141,12 @@ class MockProvider(AIProvider):
         top_category = max(counts, key=counts.get)
         parts = [
             f"{total} event(s) logged this {context.get('period', 'period')}, "
-            f"mostly in {top_category} ({counts[top_category]})."
+            f"mostly in {_label(top_category)} ({counts[top_category]})."
         ]
         deltas: dict[str, int] = context.get("category_deltas", {})
         for cat, delta in deltas.items():
             if delta > 0:
-                parts.append(f"{cat} activity increased by {delta} compared to the previous period.")
+                parts.append(f"{_label(cat).capitalize()} activity increased by {delta} compared to the previous period.")
             elif delta < 0:
-                parts.append(f"{cat} activity decreased by {abs(delta)} compared to the previous period.")
+                parts.append(f"{_label(cat).capitalize()} activity decreased by {abs(delta)} compared to the previous period.")
         return " ".join(parts)
