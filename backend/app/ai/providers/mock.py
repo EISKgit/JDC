@@ -1,25 +1,60 @@
 import re
+from functools import lru_cache
 from typing import Any
 
 from app.ai.providers.base import AIProvider
 from app.models.enums import Category
 
-# category -> (keywords to match in a sentence, event "type" label to assign)
+# category -> (keywords to match in a sentence, event "type" label to assign).
+# Keywords match whole words; a trailing "*" also matches longer forms
+# ("walk*" -> walk, walked, walking). Plain substring matching used to misfire:
+# "run " missed "run," and "read" matched "ready".
 _CATEGORY_RULES: list[tuple[Category, list[str], str]] = [
-    (Category.health, ["gym", "workout", "exercise", "ran ", "run ", "walk", "yoga", "sleep", "doctor", "sick"], "exercise"),
-    (Category.career, ["work", "project", "meeting", "coding", "code", "job", "interview", "deadline", "client", "presentation"], "work_activity"),
-    (Category.finance, ["spent", "spend", "bought", "buy", "expense", "paid", "salary", "saved", "budget", "₹", "$"], "expense"),
-    (Category.relationships, ["friend", "family", "argument", "fight", "dinner with", "partner", "mom", "dad", "relationship"], "social_interaction"),
-    (Category.learning, ["learned", "studying", "study", "course", "read", "book", "tutorial", "class"], "learning_activity"),
-    (Category.personal_growth, ["meditat", "journal", "reflect", "therapy", "mindful"], "reflection"),
-    (Category.lifestyle, ["movie", "travel", "trip", "hobby", "cooked", "cleaned", "shopping", "party"], "general_activity"),
+    (Category.health, ["gym", "workout*", "exercis*", "ran", "run", "runs", "running", "jog*", "walk*", "yoga",
+                       "sleep*", "slept", "doctor", "sick"], "exercise"),
+    (Category.career, ["work", "worked", "working", "project*", "meeting*", "coding", "code", "job*", "interview*",
+                       "deadline*", "client*", "presentation*"], "work_activity"),
+    (Category.finance, ["spent", "spend*", "bought", "buy*", "expense*", "paid", "salary", "saved", "budget*"], "expense"),
+    (Category.relationships, ["friend*", "family", "argument*", "fight*", "dinner with", "partner*", "mom", "dad",
+                              "relationship*"], "social_interaction"),
+    (Category.learning, ["learn*", "study", "studied", "studying", "course*", "read", "reading", "book*", "tutorial*",
+                         "class", "classes"], "learning_activity"),
+    (Category.personal_growth, ["meditat*", "journal*", "reflect*", "therapy", "mindful*"], "reflection"),
+    (Category.lifestyle, ["movie*", "travel*", "trip*", "hobby", "hobbies", "cook*", "cleaned", "shopping", "party"],
+     "general_activity"),
 ]
 
-_NEGATIVE_WORDS = ["skipped", "missed", "tired", "stressed", "argument", "fight", "bad", "sad", "anxious", "exhausted", "sick"]
-_POSITIVE_WORDS = ["great", "good", "enjoyed", "happy", "proud", "finished", "accomplished", "productive", "fun", "relaxing"]
+# "Spent 2 hours studying" is about time, not money — these verbs only count as
+# finance when the sentence isn't describing a duration.
+_AMBIGUOUS_MONEY_WORDS = {"spent", "spend*", "paid", "saved", "bought", "buy*"}
+
+_NEGATIVE_WORDS = ["skipped", "missed", "tired", "stressed", "argument*", "fight*", "bad", "sad", "anxious",
+                   "exhausted", "sick"]
+_POSITIVE_WORDS = ["great", "good", "enjoy*", "happy", "proud", "finished", "accomplished", "productive", "fun",
+                   "relaxing"]
 
 _AMOUNT_RE = re.compile(r"[₹$]\s?(\d+(?:\.\d+)?)")
 _DURATION_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(hours?|hrs?|minutes?|mins?)", re.IGNORECASE)
+
+
+@lru_cache
+def _keyword_pattern(keyword: str) -> re.Pattern[str]:
+    if keyword.endswith("*"):
+        return re.compile(rf"\b{re.escape(keyword[:-1])}\w*")
+    return re.compile(rf"\b{re.escape(keyword)}\b")
+
+
+def _matches(lower: str, keywords: list[str]) -> bool:
+    return any(_keyword_pattern(k).search(lower) for k in keywords)
+
+
+def _matches_category(category: Category, keywords: list[str], lower: str) -> bool:
+    if category == Category.finance:
+        if _AMOUNT_RE.search(lower):
+            return True
+        if _DURATION_RE.search(lower):
+            keywords = [k for k in keywords if k not in _AMBIGUOUS_MONEY_WORDS]
+    return _matches(lower, keywords)
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -29,9 +64,9 @@ def _split_sentences(text: str) -> list[str]:
 
 def _sentiment(sentence: str) -> str:
     lower = sentence.lower()
-    if any(w in lower for w in _NEGATIVE_WORDS):
+    if _matches(lower, _NEGATIVE_WORDS):
         return "negative"
-    if any(w in lower for w in _POSITIVE_WORDS):
+    if _matches(lower, _POSITIVE_WORDS):
         return "positive"
     return "neutral"
 
@@ -70,7 +105,7 @@ class MockProvider(AIProvider):
             lower = sentence.lower()
             category, event_type, confidence = None, "general_activity", 0.4
             for cat, keywords, type_label in _CATEGORY_RULES:
-                if any(k in lower for k in keywords):
+                if _matches_category(cat, keywords, lower):
                     category, event_type, confidence = cat, type_label, 0.9
                     break
             if category is None:

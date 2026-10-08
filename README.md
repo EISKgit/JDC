@@ -128,9 +128,10 @@ intelligence engine only ever depend on this interface. Two implementations exis
   `compute_trend` in `backend/app/services/forecasting.py`.
 - **Warnings**: rule-based — 3+ negative-sentiment events in one category within the
   period triggers one; only the wording comes from the AI.
-- **Recommendation**: targets the lowest-scoring category. With no events at all
-  there's nothing to compare, so a fixed "log your first update" message is shown
-  instead (no AI call). See `generate_dashboard` in `backend/app/services/intelligence.py`.
+- **Recommendation**: targets the lowest-scoring category *among those with
+  activity this week* — untouched categories sit at the 50 baseline and would
+  otherwise always "win". With no events at all there's nothing to compare, so a
+  fixed "log your first update" message is shown instead (no AI call). See `generate_dashboard` in `backend/app/services/intelligence.py`.
 
 ## Project structure — what is where
 
@@ -149,6 +150,7 @@ ILC/
 │   │   ├── conftest.py            test DB setup + `client` fixture
 │   │   ├── test_auth.py             register/login/me, password + email rules
 │   │   ├── test_metrics.py            score formulas
+│   │   ├── test_mock_extraction.py      mock AI keyword classification
 │   │   └── test_dashboard.py            dashboard empty state + readable narratives
 │   └── app/
 │       ├── main.py               creates the FastAPI app, CORS, DB startup
@@ -324,11 +326,13 @@ A full walkthrough of the product loop, using either the UI at
    more meaningful as more evidence accumulates (a single day of data will
    correctly show "not enough data" for most trends, by design).
 
-> **Mock provider tip:** the default `AI_PROVIDER=mock` classifies by simple
-> keywords, so phrasing matters — e.g. *"Spent 2 hours studying"* is read as a
-> Finance expense ("spent"), and *"a run,"* (with a comma) isn't recognised as
-> exercise. *"Went to the gym, felt great. Finished a Python course chapter."*
-> works as expected. A real provider (`AI_PROVIDER=openai`) doesn't have this issue.
+> **Mock provider note:** the default `AI_PROVIDER=mock` classifies each sentence
+> by whole-word keywords (so *"run,"*, *"studied"* and *"walking"* are recognised,
+> but *"ready"* isn't mistaken for *"read"*). Money verbs like *"spent"* only count
+> as Finance when there's an amount (`$`/`₹`) or no duration — *"Spent 2 hours
+> studying"* is Learning, *"Spent $800 eating out"* is Finance. Sentences with no
+> keyword fall back to Lifestyle. It's still a simple rule-based stand-in; a real
+> provider (`AI_PROVIDER=openai`) understands free-form text far better.
 
 ## API reference
 
@@ -387,8 +391,9 @@ schemas: `http://localhost:8000/docs`.
 ## Test
 
 The backend has a starter `pytest` suite covering auth (register/login/`me`,
-password rules, case-insensitive emails), the deterministic scoring formulas, and
-the dashboard's empty state + readable narratives.
+password rules, case-insensitive emails), the deterministic scoring formulas, the
+mock AI's keyword classification, and the dashboard's empty state, recommendation
+choice and readable narratives.
 Tests run against a throwaway SQLite database, so your dev `ilc.db` is never touched:
 
 ```

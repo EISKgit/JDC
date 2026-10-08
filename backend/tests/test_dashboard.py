@@ -32,6 +32,8 @@ def test_dashboard_after_an_update(client):
     assert counts["learning"] >= 1
     assert data["recommendation"] != NO_DATA_RECOMMENDATION
     assert "insufficient_evidence" not in data["recommendation"]
+    # recommends a category the user actually logged, never an untouched one at the 50 baseline
+    assert data["recommendation"].startswith(("Your health score", "Your learning score"))
 
 
 def test_mock_narratives_use_readable_names():

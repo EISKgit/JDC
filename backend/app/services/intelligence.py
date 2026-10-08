@@ -165,7 +165,11 @@ def generate_dashboard(db: Session, user: User, ai_provider: AIProvider) -> Dash
         # whichever comes first — don't dress that up as a real recommendation.
         recommendation = NO_DATA_RECOMMENDATION
     else:
-        lowest = min(weekly.category_scores, key=lambda cs: cs.score)
+        # Only categories with activity have a real score; untouched ones sit at
+        # the 50 baseline and would otherwise "win" as lowest (the dashboard
+        # shows them as "—", so quoting 50/100 for them would contradict it).
+        active = [cs for cs in weekly.category_scores if cs.event_count > 0]
+        lowest = min(active, key=lambda cs: cs.score)
         recommendation = ai_provider.generate_narrative(
             kind="recommendation",
             context={"category": lowest.category.value, "score": lowest.score, "trend": lowest.trend},
