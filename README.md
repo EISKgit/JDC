@@ -29,17 +29,17 @@ insights, trends, scores, recommendations, and short-term forecasts.
 ## Locked MVP decisions
 
 | Area           | Decision                                                                     |
-| -------------- | ----------------------------------------------------------------------------- |
-| Target         | Controlled demo/research users                                                |
-| Auth           | Email/password + Google                                                       |
-| Input          | Free-form text updates (no voice in MVP)                                      |
-| Categories     | Health, Career, Finance, Relationships, Learning, Personal Growth, Lifestyle  |
-| Categorization | AI automatic + manual correction                                              |
-| Intelligence   | Observations + trends + 7/30-day forecasts                                    |
-| Scoring        | Hybrid: deterministic metrics + LLM interpretation                            |
-| Web research   | Context-triggered/on-demand, free/open sources preferred (not yet built)      |
-| LLM            | Provider-agnostic abstraction                                                 |
-| Dashboard      | One unified dashboard with time-range intelligence (Daily / 7-day / 30-day)   |
+| -------------- | ---------------------------------------------------------------------------- |
+| Target         | Controlled demo/research users                                               |
+| Auth           | Email/password + Google                                                      |
+| Input          | Free-form text updates (no voice in MVP)                                     |
+| Categories     | Health, Career, Finance, Relationships, Learning, Personal Growth, Lifestyle |
+| Categorization | AI automatic + manual correction                                             |
+| Intelligence   | Observations + trends + 7/30-day forecasts                                   |
+| Scoring        | Hybrid: deterministic metrics + LLM interpretation                           |
+| Web research   | Context-triggered/on-demand, free/open sources preferred (not yet built)     |
+| LLM            | Provider-agnostic abstraction                                                |
+| Dashboard      | One unified dashboard with time-range intelligence (Daily / 7-day / 30-day)  |
 
 Explicitly out of scope for the MVP: voice input, yearly memory, long-range
 predictions, medical/financial diagnosis, notifications, sharing/export,
@@ -112,7 +112,10 @@ intelligence engine only ever depend on this interface. Two implementations exis
 - **Category score** (0-100, starts at 50): `+5` per event this period (capped at
   `+30`), `±4` per net positive/negative event (capped at `±20`), plus a consistency
   bonus for activity spread across more distinct days (capped at `+20`). See
-  `compute_category_score` in `backend/app/services/metrics.py`.
+  `compute_category_score` in `backend/app/services/metrics.py`. The 50 is a
+  neutral baseline, not a result — so the dashboard shows **"—"** for any category
+  with 0 events (and for the overall score when there are no events at all)
+  instead of a misleading 50.
 - **Overall score**: a *weighted* average of category scores, not a plain average —
   categories the user picked as a focus area during onboarding count 1.5x. This
   avoids one very low category getting hidden by high scores elsewhere. See
@@ -125,6 +128,9 @@ intelligence engine only ever depend on this interface. Two implementations exis
   `compute_trend` in `backend/app/services/forecasting.py`.
 - **Warnings**: rule-based — 3+ negative-sentiment events in one category within the
   period triggers one; only the wording comes from the AI.
+- **Recommendation**: targets the lowest-scoring category. With no events at all
+  there's nothing to compare, so a fixed "log your first update" message is shown
+  instead (no AI call). See `generate_dashboard` in `backend/app/services/intelligence.py`.
 
 ## Project structure — what is where
 
@@ -136,7 +142,14 @@ ILC/
 │
 ├── backend/                 FastAPI application
 │   ├── requirements.txt       exact pinned Python dependencies
+│   ├── requirements-dev.txt     + test tools (pytest)
+│   ├── pytest.ini                 pytest config (looks in tests/)
 │   ├── .env.example             config template — copy to .env
+│   ├── tests/                   pytest suite (uses a throwaway SQLite DB)
+│   │   ├── conftest.py            test DB setup + `client` fixture
+│   │   ├── test_auth.py             register/login/me, password + email rules
+│   │   ├── test_metrics.py            score formulas
+│   │   └── test_dashboard.py            dashboard empty state + readable narratives
 │   └── app/
 │       ├── main.py               creates the FastAPI app, CORS, DB startup
 │       ├── core/
@@ -178,6 +191,10 @@ ILC/
 │
 ├── frontend/                 React + TypeScript + Vite application
 │   ├── .env.example             config template — copy to .env.local
+│   ├── tests/                   Vitest suite (jsdom, fetch mocked)
+│   │   ├── client.test.ts         API client: auth header, errors, 204s
+│   │   ├── ProtectedRoute.test.tsx  login redirect
+│   │   └── Dashboard.test.tsx         "—" empty state vs. real scores
 │   └── src/
 │       ├── main.tsx               app entry point (router + auth provider)
 │       ├── App.tsx                  route definitions
@@ -300,10 +317,18 @@ A full walkthrough of the product loop, using either the UI at
 5. **Check the dashboard** at `/dashboard` — overall score, per-category scores
    with trend arrows, the week's top observation, any warnings (e.g. repeated
    negative-sentiment events in one category), a recommendation, and a 7-day
-   forecast per category.
+   forecast per category. A brand-new account shows **"—"** instead of scores and
+   a "log your first update" prompt until there's activity; categories you haven't
+   logged anything in yet stay "—".
 6. Keep logging updates over multiple days — scores, trends, and forecasts become
    more meaningful as more evidence accumulates (a single day of data will
-   correctly show `insufficient_evidence` for most trends, by design).
+   correctly show "not enough data" for most trends, by design).
+
+> **Mock provider tip:** the default `AI_PROVIDER=mock` classifies by simple
+> keywords, so phrasing matters — e.g. *"Spent 2 hours studying"* is read as a
+> Finance expense ("spent"), and *"a run,"* (with a comma) isn't recognised as
+> exercise. *"Went to the gym, felt great. Finished a Python course chapter."*
+> works as expected. A real provider (`AI_PROVIDER=openai`) doesn't have this issue.
 
 ## API reference
 
@@ -311,58 +336,59 @@ All endpoints below are under `/api/v1` and (except registration/login) require
 `Authorization: Bearer <token>`. Full interactive docs with request/response
 schemas: `http://localhost:8000/docs`.
 
-| Method | Path                          | Purpose                                      |
-| ------ | ----------------------------- | --------------------------------------------- |
-| POST   | `/auth/register`                | Create an account, returns a JWT               |
-| POST   | `/auth/login`                     | Log in, returns a JWT                            |
-| GET    | `/auth/me`                          | Current user                                       |
-| GET    | `/auth/google/login`                  | Redirect to Google sign-in (if configured)           |
-| GET    | `/auth/google/callback`                 | Google OAuth callback                                  |
-| GET    | `/categories`                             | The 7 fixed life categories                              |
-| GET    | `/onboarding`                               | Current user's Life Profile (or `null`)                    |
-| PUT    | `/onboarding`                                 | Create/update the Life Profile (regenerates AI summary)      |
-| POST   | `/goals`                                        | Create a goal                                                   |
-| GET    | `/goals`                                          | List goals                                                        |
-| PATCH  | `/goals/{id}`                                       | Update a goal                                                       |
-| DELETE | `/goals/{id}`                                         | Delete a goal                                                         |
-| POST   | `/updates`                                              | Create an update (triggers AI event extraction)                       |
-| GET    | `/updates`                                                | List updates (with their events)                                       |
-| GET    | `/updates/{id}`                                             | One update, with its events                                              |
-| PATCH  | `/events/{id}`                                                | Correct an event's category/type/description/sentiment                    |
-| DELETE | `/events/{id}`                                                  | Remove an incorrect event                                                    |
-| GET    | `/intelligence/daily`                                             | 1-day summary: scores, evidence, warnings, narrative                           |
-| GET    | `/intelligence/weekly`                                              | 7-day summary                                                                     |
-| GET    | `/intelligence/monthly`                                               | 30-day summary                                                                      |
-| GET    | `/intelligence/forecast?horizon=7\|30`                                   | Per-category forecast                                                                 |
-| GET    | `/dashboard`                                                                | Trimmed "3-5 things that matter" view                                                   |
-| GET    | `/health` *(not under /api/v1)*                                               | Liveness check                                                                            |
+| Method | Path                                    | Purpose                                                 |
+| ------ | --------------------------------------- | ------------------------------------------------------- |
+| POST   | `/auth/register`                      | Create an account, returns a JWT                        |
+| POST   | `/auth/login`                         | Log in, returns a JWT                                   |
+| GET    | `/auth/me`                            | Current user                                            |
+| GET    | `/auth/google/login`                  | Redirect to Google sign-in (if configured)              |
+| GET    | `/auth/google/callback`               | Google OAuth callback                                   |
+| GET    | `/categories`                         | The 7 fixed life categories                             |
+| GET    | `/onboarding`                         | Current user's Life Profile (or`null`)                |
+| PUT    | `/onboarding`                         | Create/update the Life Profile (regenerates AI summary) |
+| POST   | `/goals`                              | Create a goal                                           |
+| GET    | `/goals`                              | List goals                                              |
+| PATCH  | `/goals/{id}`                         | Update a goal                                           |
+| DELETE | `/goals/{id}`                         | Delete a goal                                           |
+| POST   | `/updates`                            | Create an update (triggers AI event extraction)         |
+| GET    | `/updates`                            | List updates (with their events)                        |
+| GET    | `/updates/{id}`                       | One update, with its events                             |
+| PATCH  | `/events/{id}`                        | Correct an event's category/type/description/sentiment  |
+| DELETE | `/events/{id}`                        | Remove an incorrect event                               |
+| GET    | `/intelligence/daily`                 | 1-day summary: scores, evidence, warnings, narrative    |
+| GET    | `/intelligence/weekly`                | 7-day summary                                           |
+| GET    | `/intelligence/monthly`               | 30-day summary                                          |
+| GET    | `/intelligence/forecast?horizon=7\|30` | Per-category forecast                                   |
+| GET    | `/dashboard`                          | Trimmed "3-5 things that matter" view                   |
+| GET    | `/health` *(not under /api/v1)*     | Liveness check                                          |
 
 ## Configuration reference
 
 ### Backend (`backend/.env`, copy from `.env.example`)
 
-| Variable                        | Default                                          | Notes                                                        |
-| -------------------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
-| `DATABASE_URL`                     | `sqlite:///./ilc.db`                                 | Point at a Postgres URL later — no code changes needed            |
-| `SECRET_KEY`                         | `dev-only-secret-change-me`                            | JWT signing key — change for anything beyond local dev              |
-| `ACCESS_TOKEN_EXPIRE_MINUTES`          | `10080` (7 days)                                          | JWT lifetime                                                          |
-| `CORS_ORIGINS`                           | `http://localhost:5173`                                      | Comma-separated list of allowed browser origins                        |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | *(blank)*                                                | Leave blank to disable Google sign-in (returns 501, doesn't crash)       |
-| `GOOGLE_REDIRECT_URI`                         | `http://localhost:8000/api/v1/auth/google/callback`          | Must match the Google Cloud Console OAuth client config                   |
-| `AI_PROVIDER`                                   | `mock`                                                          | `mock` (no key needed) or `openai`                                          |
-| `OPENAI_API_KEY`                                  | *(blank)*                                                         | Required only if `AI_PROVIDER=openai`                                          |
-| `OPENAI_MODEL`                                      | `gpt-4o-mini`                                                       | Any OpenAI chat-completions-compatible model                                     |
+| Variable                                        | Default                                               | Notes                                                              |
+| ----------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`                                | `sqlite:///./ilc.db`                                | Point at a Postgres URL later — no code changes needed            |
+| `SECRET_KEY`                                  | `dev-only-secret-change-me`                         | JWT signing key — change for anything beyond local dev            |
+| `ACCESS_TOKEN_EXPIRE_MINUTES`                 | `10080` (7 days)                                    | JWT lifetime                                                       |
+| `CORS_ORIGINS`                                | `http://localhost:5173`                             | Comma-separated list of allowed browser origins                    |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | *(blank)*                                           | Leave blank to disable Google sign-in (returns 501, doesn't crash) |
+| `GOOGLE_REDIRECT_URI`                         | `http://localhost:8000/api/v1/auth/google/callback` | Must match the Google Cloud Console OAuth client config            |
+| `AI_PROVIDER`                                 | `mock`                                              | `mock` (no key needed) or `openai`                             |
+| `OPENAI_API_KEY`                              | *(blank)*                                           | Required only if`AI_PROVIDER=openai`                             |
+| `OPENAI_MODEL`                                | `gpt-4o-mini`                                       | Any OpenAI chat-completions-compatible model                       |
 
 ### Frontend (`frontend/.env.local`, copy from `.env.example`)
 
-| Variable              | Default                          | Notes                                  |
-| ---------------------- | ----------------------------------- | ----------------------------------------- |
-| `VITE_API_BASE_URL`      | `http://localhost:8000/api/v1`        | Change if the backend runs elsewhere         |
+| Variable              | Default                          | Notes                                |
+| --------------------- | -------------------------------- | ------------------------------------ |
+| `VITE_API_BASE_URL` | `http://localhost:8000/api/v1` | Change if the backend runs elsewhere |
 
 ## Test
 
 The backend has a starter `pytest` suite covering auth (register/login/`me`,
-password rules, case-insensitive emails) and the deterministic scoring formulas.
+password rules, case-insensitive emails), the deterministic scoring formulas, and
+the dashboard's empty state + readable narratives.
 Tests run against a throwaway SQLite database, so your dev `ilc.db` is never touched:
 
 ```
@@ -371,7 +397,7 @@ cd backend
 .venv/Scripts/python.exe -m pytest
 ```
 
-Coverage is still thin — updates, extraction, and the intelligence endpoints are
+Coverage is still thin — updates, extraction, and most intelligence endpoints are
 verified manually with real requests (see `_docs/learning/` for the exact commands
 and outputs from each phase). Use the same approach to sanity-check the backend
 after a change:
@@ -398,8 +424,8 @@ curl -s http://127.0.0.1:8000/api/v1/dashboard -H "Authorization: Bearer $TOKEN"
 ```
 
 The frontend has a starter [Vitest](https://vitest.dev) suite in `frontend/tests/`
-covering the API client (auth header, error handling, 204s) and the
-`ProtectedRoute` login redirect. It runs in a simulated browser (jsdom) with
+covering the API client (auth header, error handling, 204s), the
+`ProtectedRoute` login redirect, and the Dashboard's "—" empty state. It runs in a simulated browser (jsdom) with
 `fetch` mocked, so the backend doesn't need to be running:
 
 ```
