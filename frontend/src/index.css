@@ -313,6 +313,11 @@ h3 {
 }
 
 .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  text-decoration: none;
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
@@ -416,6 +421,11 @@ h3 {
   margin: 0;
   display: grid;
   gap: 0.75rem;
+}
+
+.auth-highlights li svg {
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .auth-highlights li {
@@ -799,6 +809,9 @@ h3 {
 }
 
 .category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.2rem 0.6rem;
@@ -874,7 +887,8 @@ h3 {
 }
 
 .event-icon {
-  font-size: 1rem;
+  color: var(--accent, var(--text-muted));
+  flex-shrink: 0;
 }
 
 .event-main select {
@@ -945,7 +959,13 @@ h3 {
 }
 
 .empty-icon {
-  font-size: 1.75rem;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.streak-icon {
+  color: var(--cat-lifestyle);
+  vertical-align: -2px;
 }
 
 /* ---------- Dashboard ---------- */
@@ -1100,7 +1120,23 @@ h3 {
 }
 
 .trend-symbol {
-  font-weight: 800;
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.card-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-heading svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.category-icon {
+  flex-shrink: 0;
 }
 
 .score-card-value {
@@ -1192,12 +1228,20 @@ h3 {
 }
 
 .forecast-icon {
-  font-size: 1.2rem;
-  line-height: 1.4;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--surface-muted);
 }
 
 .direction {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  vertical-align: 1px;
   font-size: 0.72rem;
   font-weight: 700;
   padding: 0.1rem 0.5rem;
@@ -1219,8 +1263,6 @@ h3 {
 
 /* ---------- Dashboard guide ("JDC at a glance") ---------- */
 .guide {
-  position: relative;
-  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
   background:
     radial-gradient(600px 240px at 0% 0%, var(--primary-soft), transparent 70%),
@@ -1241,102 +1283,339 @@ h3 {
 }
 
 .guide-body {
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   animation: fade-in 0.3s ease-out;
 }
 
-.guide-intro {
-  margin: 0 0 1.25rem;
-  max-width: 75ch;
-}
-
 .guide-subheading {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.75rem;
 }
 
-.guide-steps {
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+/* Flow diagram: 4 columns joined by arrow connectors */
+.flow {
   list-style: none;
   padding: 0;
-  margin: 0 0 1.4rem;
+  margin: 0 0 1.75rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
 }
 
-.guide-step {
+.flow-step {
+  position: relative;
   display: flex;
-  gap: 0.75rem;
-  padding: 0.9rem;
-  border-radius: var(--radius-sm);
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.15rem;
 }
 
-.guide-step p,
-.guide-outcome p {
-  margin: 0.2rem 0 0.35rem;
-  font-size: 0.85rem;
+/* connector line + arrow head from this node to the next one */
+.flow-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 23px;
+  left: calc(50% + 32px);
+  right: calc(-50% - 1.5rem + 34px);
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 40%, transparent));
+}
+
+.flow-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 19px;
+  right: calc(-50% - 1.5rem + 28px);
+  border: 5px solid transparent;
+  border-left: 7px solid color-mix(in srgb, var(--primary) 55%, transparent);
+}
+
+.flow-node {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+  margin-bottom: 0.4rem;
+}
+
+.flow-step strong {
+  font-size: 0.95rem;
+}
+
+.flow-caption {
+  font-size: 0.78rem;
   color: var(--text-muted);
 }
 
-.guide-step-number {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--gradient);
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.85rem;
-}
-
-.guide-link {
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.guide-link:hover {
-  text-decoration: underline;
-}
-
-.guide-outcomes {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 0.6rem;
-}
-
-.guide-outcome {
+.flow-example {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.65rem;
+  min-height: 84px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  background: var(--surface-muted);
   display: flex;
-  gap: 0.65rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-stack {
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.flow-note {
+  margin: 0;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--text);
+}
+
+.flow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.flow-chip-area {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.flow-score {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 150px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 8px;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  text-align: left;
+}
+
+.flow-score b {
+  font-size: 0.95rem;
+}
+
+.flow-score svg {
+  color: var(--text-muted);
+}
+
+/* "Where to look": a schematic of the two screens */
+.map {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 1rem;
+}
+
+.map-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   padding: 0.75rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-muted);
 }
 
-.guide-outcome-icon {
-  font-size: 1.3rem;
-  line-height: 1.3;
-}
-
-.guide-where {
+.map-title {
   font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
 }
 
-.guide-footnote {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
+.map-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.map-zone {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 36px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.map-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.map-hero {
+  min-height: 52px;
+}
+
+.map-ring {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 5px solid var(--good);
+  border-left-color: var(--surface-muted);
+}
+
+.map-tiles {
+  display: grid;
+  grid-template-columns: repeat(7, 10px);
+  gap: 3px;
+}
+
+.map-tiles span {
+  height: 16px;
+  border-radius: 3px;
+  border-top: 3px solid;
+  background: var(--surface-muted);
+}
+
+.map-tiles span:nth-child(1) {
+  border-color: var(--cat-health);
+}
+
+.map-tiles span:nth-child(2) {
+  border-color: var(--cat-career);
+}
+
+.map-tiles span:nth-child(3) {
+  border-color: var(--cat-finance);
+}
+
+.map-tiles span:nth-child(4) {
+  border-color: var(--cat-relationships);
+}
+
+.map-tiles span:nth-child(5) {
+  border-color: var(--cat-learning);
+}
+
+.map-tiles span:nth-child(6) {
+  border-color: var(--cat-growth);
+}
+
+.map-tiles span:nth-child(7) {
+  border-color: var(--cat-lifestyle);
+}
+
+.map-accent {
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.map-warning {
+  background: var(--mid-bg);
+  border-color: color-mix(in srgb, var(--mid) 35%, transparent);
+}
+
+.map-compose {
+  min-height: 52px;
+  align-items: flex-start;
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.map-chips {
+  display: flex;
+  gap: 3px;
+}
+
+.map-chips span {
+  width: 16px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+}
+
+.map-chips span:first-child {
+  background: var(--primary);
+}
+
+.map-timeline {
+  flex: 1;
+  min-height: 64px;
+  align-items: flex-start;
+  border-left: 3px solid var(--primary);
+}
+
+@media (max-width: 720px) {
+  .flow {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .flow-step {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    column-gap: 0.85rem;
+    text-align: left;
+    align-items: start;
+  }
+
+  .flow-node {
+    grid-row: span 2;
+    margin: 0;
+  }
+
+  .flow-step strong {
+    align-self: end;
+  }
+
+  .flow-example {
+    grid-column: 2;
+    margin-top: 0.4rem;
+    min-height: 0;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  /* vertical connector between stacked steps */
+  .flow-step:not(:last-child)::before {
+    top: 52px;
+    bottom: -1.25rem;
+    left: 23px;
+    right: auto;
+    width: 2px;
+    height: auto;
+    background: color-mix(in srgb, var(--primary) 40%, transparent);
+  }
+
+  .flow-step:not(:last-child)::after {
+    display: none;
+  }
+
+  .map {
+    grid-template-columns: 1fr;
+  }
 }

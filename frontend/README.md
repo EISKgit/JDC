@@ -32,8 +32,16 @@ Tests run in jsdom with `fetch` mocked, so the backend doesn't need to be runnin
 src/
 ├── api/          fetch client + TypeScript types matching the backend schemas
 ├── context/       auth state (JWT in localStorage)
-├── components/     shared UI (nav bar, route guard, JDC guide, auth layout, logo)
+├── components/     shared UI (nav bar, route guard, JDC guide, auth layout, logo, category icon)
 ├── lib/            category icons/colors, date grouping helpers
 └── pages/            Login, Signup, Onboarding, Updates, Dashboard
-tests/            Vitest suite (API client, route guard, dashboard, update history, dates)
+tests/            Vitest suite (API client, route guard, dashboard, update history, dates, no-emoji)
 ```
+
+## Conventions
+
+- **Icons:** use [lucide-react](https://lucide.dev) line icons, never emoji.
+  `tests/no-emoji.test.ts` fails the test run if an emoji appears in `src/` or
+  `index.html`.
+- **Category styling:** take the icon and accent color from `src/lib/categories.ts`
+  (or render `<CategoryIcon category=... />`) so every page stays consistent.

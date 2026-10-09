@@ -194,13 +194,15 @@ ILC/
 │           └── intelligence.py                     daily/weekly/monthly/forecast/dashboard
 │
 ├── frontend/                 React + TypeScript + Vite application
+│                               (icons: lucide-react; no emoji — enforced by a test)
 │   ├── .env.example             config template — copy to .env.local
 │   ├── tests/                   Vitest suite (jsdom, fetch mocked)
 │   │   ├── client.test.ts         API client: auth header, errors, 204s
 │   │   ├── ProtectedRoute.test.tsx  login redirect
 │   │   ├── Dashboard.test.tsx         "—" empty state, real scores, JDC guide
 │   │   ├── Updates.test.tsx             date-wise history: grouping, chips, date picker
-│   │   └── dates.test.ts                  day keys, Today/Yesterday, streaks
+│   │   ├── dates.test.ts                  day keys, Today/Yesterday, streaks
+│   │   └── no-emoji.test.ts                 fails if an emoji appears in src/ or index.html
 │   └── src/
 │       ├── main.tsx               app entry point (router + auth provider)
 │       ├── App.tsx                  route definitions
@@ -216,7 +218,8 @@ ILC/
 │       ├── components/
 │       │   ├── ProtectedRoute.tsx             redirects to /login if signed out
 │       │   ├── NavBar.tsx                       sticky top navigation
-│       │   ├── AboutJdc.tsx                       "JDC at a glance" guide on the dashboard
+│       │   ├── AboutJdc.tsx                       "JDC at a glance": flow diagram + screen map
+│       │   ├── CategoryIcon.tsx                     a life area's icon in its accent color
 │       │   ├── AuthLayout.tsx                       two-panel login/signup layout
 │       │   └── Logo.tsx                               the JDC logo mark
 │       └── pages/
@@ -339,9 +342,11 @@ A full walkthrough of the product loop, using either the UI at
    forecast per category. A brand-new account shows **"—"** instead of scores and
    a "log your first update" prompt until there's activity; categories you haven't
    logged anything in yet stay "—". The **JDC at a glance** guide at the top
-   explains what JDC is, how to use it, and where each result appears; it's open
-   for new users and collapsed once you have data (**How JDC works** reopens it,
-   and your choice is remembered).
+   shows it visually: a 4-step flow diagram (Write → Split → Sort → See) with an
+   example entry transforming at each step, and a mini map of the Dashboard and
+   Updates screens labelling where each result appears. It's open for new users
+   and collapsed once you have data (**How JDC works** reopens it, and your choice
+   is remembered).
 7. Keep logging updates over multiple days — scores, trends, and forecasts become
    more meaningful as more evidence accumulates (a single day of data will
    correctly show "not enough data" for most trends, by design).

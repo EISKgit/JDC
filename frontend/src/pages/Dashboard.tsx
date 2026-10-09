@@ -1,27 +1,42 @@
+import {
+  Hourglass,
+  Lightbulb,
+  type LucideIcon,
+  MoveRight,
+  PenLine,
+  Search,
+  Telescope,
+  TrendingDown,
+  TrendingUp,
+  TriangleAlert,
+} from "lucide-react";
 import { type CSSProperties, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { CategoryOption, Dashboard as DashboardData } from "../api/types";
 import { AboutJdc } from "../components/AboutJdc";
+import { CategoryIcon } from "../components/CategoryIcon";
 import { categoryMeta } from "../lib/categories";
 
-const TREND_SYMBOL: Record<string, string> = {
-  improving: "↑",
-  declining: "↓",
-  stable: "→",
-  insufficient_evidence: "?",
+const TREND_ICON: Record<string, LucideIcon> = {
+  improving: TrendingUp,
+  declining: TrendingDown,
+  stable: MoveRight,
+  insufficient_evidence: Hourglass,
 };
 
 const TREND_LABEL: Record<string, string> = {
   insufficient_evidence: "not enough data",
 };
 
-const DIRECTION_ICON: Record<string, string> = {
-  improving: "📈",
-  declining: "📉",
-  stable: "➡️",
-  insufficient_evidence: "⏳",
-};
+function trendLabel(trend: string): string {
+  return TREND_LABEL[trend] ?? trend.replaceAll("_", " ");
+}
+
+function TrendIcon({ trend, size = 16 }: { trend: string; size?: number }) {
+  const Icon = TREND_ICON[trend];
+  return Icon ? <Icon size={size} aria-hidden="true" /> : null;
+}
 
 function scoreClass(score: number): string {
   if (score >= 70) return "score-good";
@@ -44,17 +59,29 @@ function ScoreRing({ score, hasData }: { score: number; hasData: boolean }) {
     <div className={`score-ring ${hasData ? scoreClass(score) : "score-none"}`}>
       <svg viewBox="0 0 120 120" aria-hidden="true">
         <circle className="score-ring-track" cx="60" cy="60" r={radius} />
-        <circle
-          className="score-ring-fill"
-          cx="60"
-          cy="60"
-          r={radius}
-          strokeDasharray={`${filled} ${circumference}`}
-          transform="rotate(-90 60 60)"
-        />
+        {/* a zero-length stroke with round caps still paints a dot, so skip it entirely */}
+        {filled > 0 && (
+          <circle
+            className="score-ring-fill"
+            cx="60"
+            cy="60"
+            r={radius}
+            strokeDasharray={`${filled} ${circumference}`}
+            transform="rotate(-90 60 60)"
+          />
+        )}
       </svg>
       <span className="overall-score-value">{hasData ? score : "—"}</span>
     </div>
+  );
+}
+
+function CardHeading({ Icon, children }: { Icon: LucideIcon; children: string }) {
+  return (
+    <h2 className="card-heading">
+      <Icon size={18} aria-hidden="true" />
+      {children}
+    </h2>
   );
 }
 
@@ -116,7 +143,8 @@ export function Dashboard() {
             </p>
           )}
           <Link to="/updates" className="btn-primary hero-cta">
-            ✍️ Add today's update
+            <PenLine size={16} aria-hidden="true" />
+            Add today's update
           </Link>
         </div>
       </section>
@@ -124,22 +152,21 @@ export function Dashboard() {
       <div className="score-grid">
         {data.category_scores.map((cs) => {
           const empty = cs.event_count === 0;
-          const meta = categoryMeta(cs.category);
           return (
             <div
               key={cs.category}
               className={`card score-card ${empty ? "score-none" : scoreClass(cs.score)}`}
-              style={{ "--accent": meta.color } as CSSProperties}
+              style={{ "--accent": categoryMeta(cs.category).color } as CSSProperties}
             >
               <div className="score-card-header">
                 <span className="score-card-title">
-                  <span className="score-card-icon" aria-hidden="true">
-                    {meta.icon}
+                  <span className="score-card-icon">
+                    <CategoryIcon category={cs.category} />
                   </span>
                   {labelFor(cs.category)}
                 </span>
-                <span className="trend-symbol" title={TREND_LABEL[cs.trend] ?? cs.trend}>
-                  {TREND_SYMBOL[cs.trend] ?? ""}
+                <span className="trend-symbol" title={trendLabel(cs.trend)}>
+                  <TrendIcon trend={cs.trend} />
                 </span>
               </div>
               <span className="score-card-value">{empty ? "—" : cs.score}</span>
@@ -147,7 +174,7 @@ export function Dashboard() {
                 <span style={{ width: empty ? "0%" : `${cs.score}%` }} />
               </div>
               <span className="score-card-meta">
-                {cs.event_count} event(s) · {TREND_LABEL[cs.trend] ?? cs.trend.replaceAll("_", " ")}
+                {cs.event_count} event(s) · {trendLabel(cs.trend)}
               </span>
             </div>
           );
@@ -156,25 +183,19 @@ export function Dashboard() {
 
       <div className="insight-grid">
         <div className="card insight-card">
-          <h2>
-            <span aria-hidden="true">🔍</span> Most important observation
-          </h2>
+          <CardHeading Icon={Search}>Most important observation</CardHeading>
           <p>{data.top_observation}</p>
         </div>
 
         <div className="card insight-card insight-accent">
-          <h2>
-            <span aria-hidden="true">💡</span> Recommended focus
-          </h2>
+          <CardHeading Icon={Lightbulb}>Recommended focus</CardHeading>
           <p>{data.recommendation}</p>
         </div>
       </div>
 
       {data.warnings.length > 0 && (
         <div className="card warning-card">
-          <h2>
-            <span aria-hidden="true">⚠️</span> What may need attention
-          </h2>
+          <CardHeading Icon={TriangleAlert}>What may need attention</CardHeading>
           <ul>
             {data.warnings.map((w, i) => (
               <li key={i}>{w}</li>
@@ -184,19 +205,18 @@ export function Dashboard() {
       )}
 
       <div className="card">
-        <h2>
-          <span aria-hidden="true">🔮</span> 7-Day Outlook
-        </h2>
+        <CardHeading Icon={Telescope}>7-Day Outlook</CardHeading>
         <ul className="forecast-list">
           {data.forecast_7day.map((f) => (
             <li key={f.category}>
-              <span className="forecast-icon" aria-hidden="true">
-                {categoryMeta(f.category).icon}
+              <span className="forecast-icon">
+                <CategoryIcon category={f.category} size={18} />
               </span>
               <div>
                 <strong>{labelFor(f.category)}</strong>{" "}
                 <span className={`direction direction-${f.direction}`}>
-                  {DIRECTION_ICON[f.direction] ?? ""} {TREND_LABEL[f.direction] ?? f.direction.replaceAll("_", " ")}
+                  <TrendIcon trend={f.direction} size={12} />
+                  {trendLabel(f.direction)}
                 </span>
                 <p>{f.narrative}</p>
               </div>

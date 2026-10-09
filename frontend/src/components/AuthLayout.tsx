@@ -1,11 +1,12 @@
+import { CalendarDays, LayoutGrid, LineChart, PenLine } from "lucide-react";
 import type { ReactNode } from "react";
 import { Logo } from "./Logo";
 
 const HIGHLIGHTS = [
-  { icon: "✍️", text: "Write about your day in plain words" },
-  { icon: "🧩", text: "JDC sorts it into 7 life areas automatically" },
-  { icon: "📊", text: "See scores, trends and a 7-day outlook" },
-  { icon: "🗓️", text: "Look back at any day in your history" },
+  { Icon: PenLine, text: "Write about your day in plain words" },
+  { Icon: LayoutGrid, text: "JDC sorts it into 7 life areas automatically" },
+  { Icon: LineChart, text: "See scores, trends and a 7-day outlook" },
+  { Icon: CalendarDays, text: "Look back at any day in your history" },
 ];
 
 export function AuthLayout({ children }: { children: ReactNode }) {
@@ -19,14 +20,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <h1>
           Just a Daily <span className="gradient-text">Companion</span>
         </h1>
-        <p className="auth-hero-tagline">
-          A few sentences a day. A clear picture of how your life is really going.
-        </p>
+        <p className="auth-hero-tagline">A few sentences a day. A clear picture of how your life is really going.</p>
         <ul className="auth-highlights">
-          {HIGHLIGHTS.map((h) => (
-            <li key={h.text}>
-              <span aria-hidden="true">{h.icon}</span>
-              {h.text}
+          {HIGHLIGHTS.map(({ Icon, text }) => (
+            <li key={text}>
+              <Icon size={18} aria-hidden="true" />
+              {text}
             </li>
           ))}
         </ul>

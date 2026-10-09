@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Dashboard as DashboardData } from "../src/api/types";
@@ -69,15 +69,22 @@ describe("JDC guide on the dashboard", () => {
     localStorage.clear();
   });
 
-  it("is open for a new user and explains how to use JDC", async () => {
+  it("is open for a new user and shows the flow diagram and screen map", async () => {
     mockApi(dashboard(0));
     renderDashboard();
 
     expect(await screen.findByRole("heading", { name: /clear picture of your life/ })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "How to use it" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "What you get and where to find it" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Open Life Profile/ }).getAttribute("href")).toBe("/onboarding");
-    expect(screen.getByRole("link", { name: /Write an update/ }).getAttribute("href")).toBe("/updates");
+
+    const flow = screen.getByRole("list", { name: "How an update becomes insight" });
+    const steps = within(flow).getAllByRole("listitem").map((li) => li.querySelector("strong")?.textContent);
+    expect(steps).toEqual(["Write", "Split", "Sort", "See"]);
+
+    const map = screen.getByRole("list", { name: "Where to find your results" });
+    expect(within(map).getByText("Life score 0–100")).toBeTruthy();
+    expect(within(map).getByText("History, grouped by day")).toBeTruthy();
+
+    expect(screen.getByRole("link", { name: /Set up Life Profile/ }).getAttribute("href")).toBe("/onboarding");
+    expect(screen.getByRole("link", { name: /2\. Write an update/ }).getAttribute("href")).toBe("/updates");
   });
 
   it("starts collapsed once there is data, and remembers the user's choice", async () => {
@@ -86,10 +93,10 @@ describe("JDC guide on the dashboard", () => {
 
     const toggle = await screen.findByRole("button", { name: "How JDC works" });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("heading", { name: "How to use it" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "How an update becomes insight" })).toBeNull();
 
     fireEvent.click(toggle);
-    expect(screen.getByRole("heading", { name: "How to use it" })).toBeTruthy();
+    expect(screen.getByRole("list", { name: "How an update becomes insight" })).toBeTruthy();
     expect(localStorage.getItem("jdc_guide_open")).toBe("true");
 
     cleanup();

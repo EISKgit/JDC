@@ -1,3 +1,4 @@
+import { CalendarX, Flame, NotebookPen } from "lucide-react";
 import { type CSSProperties, type FormEvent, type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import type { Category, CategoryOption, EventItem, UpdateItem } from "../api/types";
@@ -30,9 +31,7 @@ function EventRow({
   return (
     <li className="event-row" style={{ "--accent": meta.color } as CSSProperties}>
       <div className="event-main">
-        <span className="event-icon" aria-hidden="true">
-          {meta.icon}
-        </span>
+        <meta.Icon className="event-icon" size={16} aria-hidden="true" />
         <select
           aria-label="Event category"
           value={event.category}
@@ -68,7 +67,8 @@ function DayCategorySummary({ updates }: { updates: UpdateItem[] }) {
         const meta = categoryMeta(category);
         return (
           <span key={category} className="category-pill" style={{ "--accent": meta.color } as CSSProperties}>
-            {meta.icon} {meta.label} · {count}
+            <meta.Icon size={13} aria-hidden="true" />
+            {meta.label} · {count}
           </span>
         );
       })}
@@ -182,7 +182,7 @@ export function Updates() {
                 {streak > 0 && (
                   <>
                     {" "}
-                    · 🔥 <strong>{streak}</strong>-day streak
+                    · <Flame className="streak-icon" size={14} aria-hidden="true" /> <strong>{streak}</strong>-day streak
                   </>
                 )}
               </p>
@@ -232,18 +232,14 @@ export function Updates() {
 
           {updates.length === 0 && (
             <div className="card empty-card">
-              <span className="empty-icon" aria-hidden="true">
-                ✍️
-              </span>
+              <NotebookPen className="empty-icon" size={28} aria-hidden="true" />
               <p>No updates yet. Write your first one above and it will show up here, grouped by day.</p>
             </div>
           )}
 
           {selectedDay && visibleDays.length === 0 && (
             <div className="card empty-card">
-              <span className="empty-icon" aria-hidden="true">
-                📭
-              </span>
+              <CalendarX className="empty-icon" size={28} aria-hidden="true" />
               <p>No entries on {longDate(selectedDay)}.</p>
             </div>
           )}

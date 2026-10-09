@@ -72,7 +72,7 @@ describe("Updates history", () => {
     expect(await screen.findByRole("heading", { name: "Today" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Yesterday" })).toBeTruthy();
     // 2-day streak: today + yesterday (the 5-days-ago entry is not part of the chain)
-    expect(document.querySelector(".history-stats")?.textContent).toBe("3 entries across 3 days · 🔥 2-day streak");
+    expect(document.querySelector(".history-stats")?.textContent).toMatch(/^3 entries across 3 days ·\s+2-day streak$/);
   });
 
   it("filters to one day from a chip and back to all", async () => {

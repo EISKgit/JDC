@@ -1,11 +1,12 @@
+import { LayoutDashboard, NotebookPen, UserRound } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Logo } from "./Logo";
 
 const LINKS = [
-  { to: "/dashboard", label: "Dashboard", icon: "📊" },
-  { to: "/updates", label: "Updates", icon: "✍️" },
-  { to: "/onboarding", label: "Life Profile", icon: "🧭" },
+  { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { to: "/updates", label: "Updates", Icon: NotebookPen },
+  { to: "/onboarding", label: "Life Profile", Icon: UserRound },
 ];
 
 export function NavBar() {
@@ -29,10 +30,10 @@ export function NavBar() {
           <span>JDC</span>
         </NavLink>
         <div className="navbar-links">
-          {LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to} className={({ isActive }) => (isActive ? "active" : "")}>
-              <span aria-hidden="true">{link.icon}</span>
-              <span className="navbar-link-label">{link.label}</span>
+          {LINKS.map(({ to, label, Icon }) => (
+            <NavLink key={to} to={to} className={({ isActive }) => (isActive ? "active" : "")}>
+              <Icon size={17} aria-hidden="true" />
+              <span className="navbar-link-label">{label}</span>
             </NavLink>
           ))}
         </div>

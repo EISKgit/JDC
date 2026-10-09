@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { ChevronDown, ChevronUp, Gauge, Hourglass, LayoutGrid, PenLine, Split, TrendingUp } from "lucide-react";
+import { type CSSProperties, useState } from "react";
 import { Link } from "react-router-dom";
+import { categoryMeta } from "../lib/categories";
+import { CategoryIcon } from "./CategoryIcon";
 
 const STORAGE_KEY = "jdc_guide_open";
 
@@ -20,35 +23,139 @@ function storeOpen(open: boolean) {
   }
 }
 
-const STEPS = [
-  {
-    title: "Set up your Life Profile",
-    body: "Tell JDC what you care about and which life areas to focus on. Focus areas count 1.5× in your overall score.",
-    to: "/onboarding",
-    cta: "Open Life Profile",
-  },
-  {
-    title: "Write a quick daily update",
-    body: "Plain sentences about your day. JDC splits them into events and sorts each into a life area: no forms, no tagging.",
-    to: "/updates",
-    cta: "Write an update",
-  },
-  {
-    title: "Come back here for insights",
-    body: "Scores, trends and suggestions refresh every time you log. The more days you log, the sharper they get.",
-    to: null,
-    cta: null,
-  },
+const EXAMPLE_EVENTS = [
+  { text: "Gym in the morning", category: "health" },
+  { text: "Spent $40 on groceries", category: "finance" },
 ];
 
-const OUTCOMES = [
-  { icon: "🎯", title: "Life score", where: "Top of this page", body: "0–100 per area plus a weighted overall score for the last 7 days." },
-  { icon: "📈", title: "Trends", where: "Arrows on each area card", body: "↑ improving, ↓ declining, → stable vs. the previous week." },
-  { icon: "⚠️", title: "Early warnings", where: "“What may need attention”", body: "Flags an area with repeated negative updates." },
-  { icon: "💡", title: "Recommended focus", where: "Below the observation", body: "The one area that most needs a small, consistent action." },
-  { icon: "🔮", title: "7-day outlook", where: "Bottom of this page", body: "Where each area is heading if the current pattern continues." },
-  { icon: "🗓️", title: "Day-by-day history", where: "Updates page", body: "Every entry grouped by date, with a date picker to look back." },
-];
+function accent(category: string): CSSProperties {
+  return { "--accent": categoryMeta(category).color } as CSSProperties;
+}
+
+/** The pipeline, each step showing what happens to one example entry. */
+function Flow() {
+  return (
+    <ol className="flow" aria-label="How an update becomes insight">
+      <li className="flow-step">
+        <span className="flow-node">
+          <PenLine size={20} aria-hidden="true" />
+        </span>
+        <strong>Write</strong>
+        <span className="flow-caption">your day, in plain words</span>
+        <div className="flow-example">
+          <p className="flow-note">"Gym in the morning. Spent $40 on groceries."</p>
+        </div>
+      </li>
+
+      <li className="flow-step">
+        <span className="flow-node">
+          <Split size={20} aria-hidden="true" />
+        </span>
+        <strong>Split</strong>
+        <span className="flow-caption">into separate events</span>
+        <div className="flow-example flow-stack">
+          {EXAMPLE_EVENTS.map((e) => (
+            <span key={e.text} className="flow-chip">
+              {e.text}
+            </span>
+          ))}
+        </div>
+      </li>
+
+      <li className="flow-step">
+        <span className="flow-node">
+          <LayoutGrid size={20} aria-hidden="true" />
+        </span>
+        <strong>Sort</strong>
+        <span className="flow-caption">into 7 life areas</span>
+        <div className="flow-example flow-stack">
+          {EXAMPLE_EVENTS.map((e) => (
+            <span key={e.category} className="flow-chip flow-chip-area" style={accent(e.category)}>
+              <CategoryIcon category={e.category} size={14} />
+              {categoryMeta(e.category).label}
+            </span>
+          ))}
+        </div>
+      </li>
+
+      <li className="flow-step">
+        <span className="flow-node">
+          <Gauge size={20} aria-hidden="true" />
+        </span>
+        <strong>See</strong>
+        <span className="flow-caption">scores, trends, outlook</span>
+        <div className="flow-example flow-stack">
+          <span className="flow-score" style={accent("health")}>
+            <span>Health</span>
+            <b>74</b>
+            <TrendingUp size={14} aria-label="improving" />
+          </span>
+          <span className="flow-score" style={accent("finance")}>
+            <span>Finance</span>
+            <b>58</b>
+            <Hourglass size={14} aria-label="not enough data yet" />
+          </span>
+        </div>
+      </li>
+    </ol>
+  );
+}
+
+/** A schematic of the dashboard and Updates page, labelling where each result lives. */
+function WhereToLook() {
+  return (
+    <div className="map" role="list" aria-label="Where to find your results">
+      <div className="map-screen" role="listitem">
+        <span className="map-title">Dashboard</span>
+        <div className="map-zone map-hero">
+          <span className="map-ring" aria-hidden="true" />
+          <span className="map-label">Life score 0–100</span>
+        </div>
+        <div className="map-zone">
+          <div className="map-tiles" aria-hidden="true">
+            {Array.from({ length: 7 }, (_, i) => (
+              <span key={i} />
+            ))}
+          </div>
+          <span className="map-label">7 areas + trend arrows</span>
+        </div>
+        <div className="map-row">
+          <div className="map-zone">
+            <span className="map-label">Key observation</span>
+          </div>
+          <div className="map-zone map-accent">
+            <span className="map-label">Recommended focus</span>
+          </div>
+        </div>
+        <div className="map-zone map-warning">
+          <span className="map-label">Warnings (when needed)</span>
+        </div>
+        <div className="map-zone">
+          <span className="map-label">7-day outlook</span>
+        </div>
+      </div>
+
+      <div className="map-screen" role="listitem">
+        <span className="map-title">Updates</span>
+        <div className="map-zone map-compose">
+          <span className="map-label">Write today's entry</span>
+        </div>
+        <div className="map-zone">
+          <div className="map-chips" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <span className="map-label">Pick a day or date</span>
+        </div>
+        <div className="map-zone map-timeline">
+          <span className="map-label">History, grouped by day</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function AboutJdc({ defaultOpen }: { defaultOpen: boolean }) {
   const [open, setOpen] = useState(() => readStoredOpen() ?? defaultOpen);
@@ -61,64 +168,34 @@ export function AboutJdc({ defaultOpen }: { defaultOpen: boolean }) {
   }
 
   return (
-    <section className={`card guide ${open ? "guide-open" : ""}`} aria-labelledby="guide-heading">
+    <section className="card guide" aria-labelledby="guide-heading">
       <div className="guide-header">
         <div>
           <p className="eyebrow">JDC at a glance</p>
-          <h2 id="guide-heading">Your daily notes, turned into a clear picture of your life</h2>
+          <h2 id="guide-heading">From a few sentences to a clear picture of your life</h2>
         </div>
         <button type="button" className="btn-secondary" aria-expanded={open} onClick={toggle}>
+          {open ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
           {open ? "Hide guide" : "How JDC works"}
         </button>
       </div>
 
       {open && (
         <div className="guide-body">
-          <p className="guide-intro">
-            <strong>JDC (Just a Daily Companion)</strong> is a personal life tracker. You write about your day in your own
-            words; JDC turns it into events across seven life areas (health, career, finance, relationships, learning,
-            personal growth and lifestyle) and shows how each one is really going, based only on what you logged.
-          </p>
+          <h3 className="guide-subheading">How it works</h3>
+          <Flow />
 
-          <h3 className="guide-subheading">How to use it</h3>
-          <ol className="guide-steps">
-            {STEPS.map((step, i) => (
-              <li key={step.title} className="guide-step">
-                <span className="guide-step-number">{i + 1}</span>
-                <div>
-                  <strong>{step.title}</strong>
-                  <p>{step.body}</p>
-                  {step.to && (
-                    <Link to={step.to} className="guide-link">
-                      {step.cta} →
-                    </Link>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
+          <h3 className="guide-subheading">Where to look</h3>
+          <WhereToLook />
 
-          <h3 className="guide-subheading">What you get and where to find it</h3>
-          <ul className="guide-outcomes">
-            {OUTCOMES.map((o) => (
-              <li key={o.title} className="guide-outcome">
-                <span className="guide-outcome-icon" aria-hidden="true">
-                  {o.icon}
-                </span>
-                <div>
-                  <strong>{o.title}</strong>
-                  <p>{o.body}</p>
-                  <span className="guide-where">📍 {o.where}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <p className="guide-footnote">
-            Scores come from fixed, transparent formulas over your logged events. AI is only used to read your updates
-            and to word the insights. If an event lands in the wrong area, fix it on the Updates page and your scores
-            follow.
-          </p>
+          <div className="guide-actions">
+            <Link to="/onboarding" className="btn-secondary">
+              1. Set up Life Profile
+            </Link>
+            <Link to="/updates" className="btn-primary">
+              2. Write an update
+            </Link>
+          </div>
         </div>
       )}
     </section>

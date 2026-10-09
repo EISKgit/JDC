@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Category, CategoryOption, LifeProfile } from "../api/types";
-import { categoryMeta } from "../lib/categories";
+import { CategoryIcon } from "../components/CategoryIcon";
 
 export function Onboarding() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -91,7 +91,7 @@ export function Onboarding() {
                   checked={focusCategories.includes(c.value)}
                   onChange={() => toggleCategory(c.value)}
                 />
-                <span aria-hidden="true">{categoryMeta(c.value).icon}</span>
+                <CategoryIcon category={c.value} />
                 {c.label}
               </label>
             ))}
@@ -110,9 +110,7 @@ export function Onboarding() {
 
       {aiSummary && (
         <div className="card insight-card">
-          <h2>
-            <span aria-hidden="true">✨</span> AI summary
-          </h2>
+          <h2>AI summary</h2>
           <p>{aiSummary}</p>
         </div>
       )}
