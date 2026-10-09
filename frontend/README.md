@@ -32,7 +32,8 @@ Tests run in jsdom with `fetch` mocked, so the backend doesn't need to be runnin
 src/
 ├── api/          fetch client + TypeScript types matching the backend schemas
 ├── context/       auth state (JWT in localStorage)
-├── components/     shared UI (nav bar, route guard)
+├── components/     shared UI (nav bar, route guard, JDC guide, auth layout, logo)
+├── lib/            category icons/colors, date grouping helpers
 └── pages/            Login, Signup, Onboarding, Updates, Dashboard
-tests/            Vitest suite (API client, route guard, dashboard empty state)
+tests/            Vitest suite (API client, route guard, dashboard, update history, dates)
 ```

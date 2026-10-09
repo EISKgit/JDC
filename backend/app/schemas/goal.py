@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from pydantic import BaseModel
 
 from app.models.enums import Category, GoalStatus
+from app.schemas.common import UTCDateTime
 
 
 class GoalCreate(BaseModel):
@@ -23,6 +22,6 @@ class GoalOut(BaseModel):
     title: str
     description: str | None
     status: GoalStatus
-    created_at: datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}

@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from pydantic import BaseModel
 
 from app.models.enums import Category
+from app.schemas.common import UTCDateTime
 
 
 class LifeProfileIn(BaseModel):
@@ -19,7 +18,7 @@ class LifeProfileOut(BaseModel):
     challenges: str | None
     focus_categories: list[Category]
     ai_summary: str | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     model_config = {"from_attributes": True}

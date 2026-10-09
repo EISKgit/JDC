@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
+import { AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../context/AuthContext";
 
 export function Signup() {
@@ -27,10 +28,10 @@ export function Signup() {
   }
 
   return (
-    <div className="auth-page">
+    <AuthLayout>
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>JDC — Just a Daily Companion</h1>
-        <p className="auth-subtitle">Create your account</p>
+        <h2>Create your account</h2>
+        <p className="auth-subtitle">Takes under a minute to get started.</p>
         <label>
           Full name (optional)
           <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -46,8 +47,10 @@ export function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={8}
+            maxLength={72}
             required
           />
+          <span className="field-hint">8–72 characters</span>
         </label>
         {error && <p className="form-error">{error}</p>}
         <button type="submit" className="btn-primary" disabled={submitting}>
@@ -57,6 +60,6 @@ export function Signup() {
           Already have an account? <Link to="/login">Log in</Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

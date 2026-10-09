@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Dashboard as DashboardData } from "../src/api/types";
@@ -61,5 +61,39 @@ describe("Dashboard", () => {
     expect(await screen.findByText("Overall score (last 7 days)")).toBeTruthy();
     expect(screen.getAllByText("72")).toHaveLength(2); // overall + health
     expect(screen.getAllByText("—")).toHaveLength(1); // personal growth still empty
+  });
+});
+
+describe("JDC guide on the dashboard", () => {
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("is open for a new user and explains how to use JDC", async () => {
+    mockApi(dashboard(0));
+    renderDashboard();
+
+    expect(await screen.findByRole("heading", { name: /clear picture of your life/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "How to use it" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "What you get and where to find it" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Open Life Profile/ }).getAttribute("href")).toBe("/onboarding");
+    expect(screen.getByRole("link", { name: /Write an update/ }).getAttribute("href")).toBe("/updates");
+  });
+
+  it("starts collapsed once there is data, and remembers the user's choice", async () => {
+    mockApi(dashboard(3));
+    renderDashboard();
+
+    const toggle = await screen.findByRole("button", { name: "How JDC works" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("heading", { name: "How to use it" })).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(screen.getByRole("heading", { name: "How to use it" })).toBeTruthy();
+    expect(localStorage.getItem("jdc_guide_open")).toBe("true");
+
+    cleanup();
+    renderDashboard();
+    expect(await screen.findByRole("button", { name: "Hide guide" })).toBeTruthy();
   });
 });

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
+import { AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../context/AuthContext";
 
 export function Login() {
@@ -26,10 +27,10 @@ export function Login() {
   }
 
   return (
-    <div className="auth-page">
+    <AuthLayout>
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>JDC — Just a Daily Companion</h1>
-        <p className="auth-subtitle">Log in to continue</p>
+        <h2>Welcome back</h2>
+        <p className="auth-subtitle">Log in to see how your week is going.</p>
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -51,6 +52,6 @@ export function Login() {
           No account? <Link to="/signup">Sign up</Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

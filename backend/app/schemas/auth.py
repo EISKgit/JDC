@@ -1,6 +1,6 @@
-from datetime import datetime
-
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.schemas.common import UTCDateTime
 
 
 def _normalize_email(value: str) -> str:
@@ -27,7 +27,7 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     full_name: str | None
-    created_at: datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

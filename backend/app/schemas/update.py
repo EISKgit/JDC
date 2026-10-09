@@ -1,7 +1,6 @@
-from datetime import datetime
-
 from pydantic import BaseModel
 
+from app.schemas.common import UTCDateTime
 from app.schemas.event import EventOut
 
 
@@ -12,7 +11,7 @@ class UpdateCreate(BaseModel):
 class UpdateOut(BaseModel):
     id: int
     content: str
-    created_at: datetime
+    created_at: UTCDateTime
     events: list[EventOut] = []
 
     model_config = {"from_attributes": True}

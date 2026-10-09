@@ -151,7 +151,8 @@ ILC/
 │   │   ├── test_auth.py             register/login/me, password + email rules
 │   │   ├── test_metrics.py            score formulas
 │   │   ├── test_mock_extraction.py      mock AI keyword classification
-│   │   └── test_dashboard.py            dashboard empty state + readable narratives
+│   │   ├── test_dashboard.py            dashboard empty state + readable narratives
+│   │   └── test_timestamps.py             API timestamps carry an explicit UTC offset
 │   └── app/
 │       ├── main.py               creates the FastAPI app, CORS, DB startup
 │       ├── core/
@@ -169,6 +170,7 @@ ILC/
 │       │   └── event.py                        events (AI-extracted structured facts)
 │       ├── schemas/                Pydantic request/response shapes (API contracts,
 │       │                             deliberately separate from the DB models)
+│       │   └── common.py               UTCDateTime — timestamps always sent with "Z"
 │       ├── ai/
 │       │   ├── providers/
 │       │   │   ├── base.py               AIProvider interface + AIProviderError
@@ -196,11 +198,16 @@ ILC/
 │   ├── tests/                   Vitest suite (jsdom, fetch mocked)
 │   │   ├── client.test.ts         API client: auth header, errors, 204s
 │   │   ├── ProtectedRoute.test.tsx  login redirect
-│   │   └── Dashboard.test.tsx         "—" empty state vs. real scores
+│   │   ├── Dashboard.test.tsx         "—" empty state, real scores, JDC guide
+│   │   ├── Updates.test.tsx             date-wise history: grouping, chips, date picker
+│   │   └── dates.test.ts                  day keys, Today/Yesterday, streaks
 │   └── src/
 │       ├── main.tsx               app entry point (router + auth provider)
 │       ├── App.tsx                  route definitions
-│       ├── index.css                  all styling (CSS variables, light/dark)
+│       ├── index.css                  all styling: design tokens, light/dark, mobile
+│       ├── lib/
+│       │   ├── categories.ts            icon + accent color per life area
+│       │   └── dates.ts                   local-day grouping, labels, streak
 │       ├── api/
 │       │   ├── client.ts                fetch wrapper: attaches JWT, parses errors
 │       │   └── types.ts                   TypeScript types mirroring backend schemas
@@ -208,11 +215,15 @@ ILC/
 │       │   └── AuthContext.tsx              logged-in user + login/register/logout
 │       ├── components/
 │       │   ├── ProtectedRoute.tsx             redirects to /login if signed out
-│       │   └── NavBar.tsx                       top navigation
+│       │   ├── NavBar.tsx                       sticky top navigation
+│       │   ├── AboutJdc.tsx                       "JDC at a glance" guide on the dashboard
+│       │   ├── AuthLayout.tsx                       two-panel login/signup layout
+│       │   └── Logo.tsx                               the JDC logo mark
 │       └── pages/
 │           ├── Login.tsx / Signup.tsx
 │           ├── Onboarding.tsx                     the "Life Profile" form
-│           ├── Updates.tsx                          "What happened today?" + event correction
+│           ├── Updates.tsx                          "What happened today?", date-wise
+│           │                                          history, event correction
 │           └── Dashboard.tsx                          "Your Life Overview"
 │
 └── _docs/                    LOCAL ONLY — gitignored, never pushed to GitHub
@@ -316,13 +327,22 @@ A full walkthrough of the product loop, using either the UI at
 4. **Correct anything the AI got wrong** — change an event's category from the
    dropdown, or remove one that shouldn't exist. Corrections are tracked
    (`is_corrected`).
-5. **Check the dashboard** at `/dashboard` — overall score, per-category scores
+5. **Look back through your history** — below the update box, entries are grouped
+   by day (*Today*, *Yesterday*, then full dates), each day showing which life
+   areas it touched. Click a day chip to see just that day, or use **Jump to date**
+   to pick any date; **Show all days** returns to the full list. The header shows
+   your total entries, days logged, and current daily streak. Days follow your
+   local timezone.
+6. **Check the dashboard** at `/dashboard` — overall score, per-category scores
    with trend arrows, the week's top observation, any warnings (e.g. repeated
    negative-sentiment events in one category), a recommendation, and a 7-day
    forecast per category. A brand-new account shows **"—"** instead of scores and
    a "log your first update" prompt until there's activity; categories you haven't
-   logged anything in yet stay "—".
-6. Keep logging updates over multiple days — scores, trends, and forecasts become
+   logged anything in yet stay "—". The **JDC at a glance** guide at the top
+   explains what JDC is, how to use it, and where each result appears; it's open
+   for new users and collapsed once you have data (**How JDC works** reopens it,
+   and your choice is remembered).
+7. Keep logging updates over multiple days — scores, trends, and forecasts become
    more meaningful as more evidence accumulates (a single day of data will
    correctly show "not enough data" for most trends, by design).
 
@@ -393,7 +413,7 @@ schemas: `http://localhost:8000/docs`.
 The backend has a starter `pytest` suite covering auth (register/login/`me`,
 password rules, case-insensitive emails), the deterministic scoring formulas, the
 mock AI's keyword classification, and the dashboard's empty state, recommendation
-choice and readable narratives.
+choice and readable narratives, and UTC timestamps in API responses.
 Tests run against a throwaway SQLite database, so your dev `ilc.db` is never touched:
 
 ```
@@ -430,7 +450,9 @@ curl -s http://127.0.0.1:8000/api/v1/dashboard -H "Authorization: Bearer $TOKEN"
 
 The frontend has a starter [Vitest](https://vitest.dev) suite in `frontend/tests/`
 covering the API client (auth header, error handling, 204s), the
-`ProtectedRoute` login redirect, and the Dashboard's "—" empty state. It runs in a simulated browser (jsdom) with
+`ProtectedRoute` login redirect, the Dashboard's "—" empty state and JDC guide, the
+Updates page's date-wise history (grouping, day chips, date picker), and the date
+helpers (local days, Today/Yesterday, streaks). It runs in a simulated browser (jsdom) with
 `fetch` mocked, so the backend doesn't need to be running:
 
 ```

@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from pydantic import BaseModel
 
 from app.models.enums import Category
+from app.schemas.common import UTCDateTime
 
 
 class EvidenceRef(BaseModel):
@@ -21,8 +20,8 @@ class CategoryScore(BaseModel):
 
 class PeriodSummary(BaseModel):
     period: str
-    start: datetime
-    end: datetime
+    start: UTCDateTime
+    end: UTCDateTime
     total_events: int
     category_counts: dict[str, int]
     category_scores: list[CategoryScore]

@@ -1,9 +1,9 @@
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
 
 from app.models.enums import Category, Sentiment
+from app.schemas.common import UTCDateTime
 
 
 class EventOut(BaseModel):
@@ -16,7 +16,7 @@ class EventOut(BaseModel):
     confidence: float | None
     details: dict[str, Any]
     is_corrected: bool
-    created_at: datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

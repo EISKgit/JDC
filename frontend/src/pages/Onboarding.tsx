@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Category, CategoryOption, LifeProfile } from "../api/types";
+import { categoryMeta } from "../lib/categories";
 
 export function Onboarding() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -57,10 +58,14 @@ export function Onboarding() {
 
   return (
     <div className="page">
-      <h1>Your Life Profile</h1>
-      <p className="page-subtitle">
-        Tell us a little about yourself. This shapes how your updates get interpreted.
-      </p>
+      <header className="page-header">
+        <p className="eyebrow">Step 1 · Life Profile</p>
+        <h1>Your Life Profile</h1>
+        <p className="page-subtitle">
+          Tell us a little about yourself. This shapes how your updates get interpreted, and the areas you pick
+          count 1.5× in your overall score.
+        </p>
+      </header>
 
       <form className="card form-stack" onSubmit={handleSubmit}>
         <label>
@@ -77,12 +82,16 @@ export function Onboarding() {
           <span className="field-label">Areas of life</span>
           <div className="checkbox-grid">
             {categories.map((c) => (
-              <label key={c.value} className="checkbox-option">
+              <label
+                key={c.value}
+                className={`checkbox-option ${focusCategories.includes(c.value) ? "checked" : ""}`}
+              >
                 <input
                   type="checkbox"
                   checked={focusCategories.includes(c.value)}
                   onChange={() => toggleCategory(c.value)}
                 />
+                <span aria-hidden="true">{categoryMeta(c.value).icon}</span>
                 {c.label}
               </label>
             ))}
@@ -101,7 +110,9 @@ export function Onboarding() {
 
       {aiSummary && (
         <div className="card insight-card">
-          <h2>AI summary</h2>
+          <h2>
+            <span aria-hidden="true">✨</span> AI summary
+          </h2>
           <p>{aiSummary}</p>
         </div>
       )}
