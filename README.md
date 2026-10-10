@@ -81,10 +81,12 @@ from the `events` table.
 3. **Write an update** (`POST /updates`) → the raw text is saved immediately, then
    the AI provider (`extract_events`) turns it into structured `Event` rows
    (category, type, sentiment, confidence, amount/duration if present) — all in the
-   same request, synchronously. If AI extraction fails, the update itself is still
-   safely saved.
+   same request, synchronously. Each event's description is tidied into a clean
+   sentence (typos, casing, "and also" openers) while the update keeps the exact
+   words typed. If AI extraction fails, the update itself is still safely saved.
+   Editing the update (`PATCH /updates/{id}`) re-extracts its events from the new text.
 4. **Correct an event** (`PATCH /events/{id}`) → fixes a wrong category/type/
-   sentiment and flags it `is_corrected`; `DELETE /events/{id}` removes one that
+   description/sentiment and flags it `is_corrected`; `DELETE /events/{id}` removes one that
    shouldn't exist.
 5. **View intelligence** (`GET /intelligence/daily|weekly|monthly`,
    `GET /dashboard`, `GET /intelligence/forecast`) → on each request, the backend
@@ -152,6 +154,8 @@ ILC/
 │   │   ├── test_metrics.py            score formulas
 │   │   ├── test_mock_extraction.py      mock AI keyword classification
 │   │   ├── test_dashboard.py            dashboard empty state + readable narratives
+│   │   ├── test_text_polish.py            event statements: typo/casing cleanup
+│   │   ├── test_update_edits.py             editing an update or a single statement
 │   │   └── test_timestamps.py             API timestamps carry an explicit UTC offset
 │   └── app/
 │       ├── main.py               creates the FastAPI app, CORS, DB startup
@@ -179,6 +183,7 @@ ILC/
 │       │   └── factory.py                get_ai_provider() — picks a provider from .env
 │       ├── services/                Business logic (no HTTP concerns here)
 │       │   ├── event_extraction.py    runs AI extraction, persists Event rows
+│       │   ├── text_polish.py           tidies event statements (typos, casing)
 │       │   ├── metrics.py               deterministic counts + score formulas
 │       │   ├── forecasting.py             trend classification (compute_trend)
 │       │   └── intelligence.py              orchestrates metrics+AI into summaries,
@@ -189,7 +194,7 @@ ILC/
 │           ├── categories.py             GET /categories (the 7 fixed categories)
 │           ├── onboarding.py               GET/PUT /onboarding
 │           ├── goals.py                      goals CRUD
-│           ├── updates.py                      updates create/list/detail (+ extraction)
+│           ├── updates.py                      updates create/list/detail/edit (+ extraction)
 │           ├── events.py                         manual event correction/deletion
 │           └── intelligence.py                     daily/weekly/monthly/forecast/dashboard
 │
@@ -328,7 +333,8 @@ A full walkthrough of the product loop, using either the UI at
    separate Health/Career/Finance/Relationships events, each shown with its
    category, sentiment, and confidence.
 4. **Correct anything the AI got wrong** — change an event's category from the
-   dropdown, or remove one that shouldn't exist. Corrections are tracked
+   dropdown, reword a statement with **Edit**, or remove one that shouldn't exist.
+   **Edit update** rewrites the whole paragraph and re-sorts its statements to match. Corrections are tracked
    (`is_corrected`).
 5. **Look back through your history** — below the update box, entries are grouped
    by day (*Today*, *Yesterday*, then full dates), each day showing which life
@@ -382,6 +388,7 @@ schemas: `http://localhost:8000/docs`.
 | POST   | `/updates`                            | Create an update (triggers AI event extraction)         |
 | GET    | `/updates`                            | List updates (with their events)                        |
 | GET    | `/updates/{id}`                       | One update, with its events                             |
+| PATCH  | `/updates/{id}`                       | Edit an update's text (re-extracts its events)          |
 | PATCH  | `/events/{id}`                        | Correct an event's category/type/description/sentiment  |
 | DELETE | `/events/{id}`                        | Remove an incorrect event                               |
 | GET    | `/intelligence/daily`                 | 1-day summary: scores, evidence, warnings, narrative    |

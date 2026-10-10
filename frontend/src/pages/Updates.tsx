@@ -1,4 +1,4 @@
-import { CalendarX, Flame, NotebookPen } from "lucide-react";
+import { CalendarX, Check, Flame, NotebookPen, Pencil, X } from "lucide-react";
 import { type CSSProperties, type FormEvent, type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import type { Category, CategoryOption, EventItem, UpdateItem } from "../api/types";
@@ -26,6 +26,40 @@ function EventRow({
     onChange(null);
   }
 
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(event.description);
+  const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    setDraft(event.description);
+    setEditing(true);
+  }
+
+  async function saveDescription() {
+    const description = draft.trim();
+    if (!description || saving) return;
+    if (description === event.description) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      onChange(await api.patch<EventItem>(`/events/${event.id}`, { description }));
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleEditKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveDescription();
+    } else if (e.key === "Escape") {
+      setEditing(false);
+    }
+  }
+
   const meta = categoryMeta(event.category);
 
   return (
@@ -43,16 +77,154 @@ function EventRow({
             </option>
           ))}
         </select>
-        <span className="event-description">{event.description}</span>
+        {editing ? (
+          <span className="event-edit">
+            <input
+              aria-label="Edit statement"
+              value={draft}
+              autoFocus
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleEditKeyDown}
+            />
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Save statement"
+              disabled={saving || !draft.trim()}
+              onClick={saveDescription}
+            >
+              <Check size={15} aria-hidden="true" />
+            </button>
+            <button type="button" className="icon-btn" aria-label="Cancel editing" onClick={() => setEditing(false)}>
+              <X size={15} aria-hidden="true" />
+            </button>
+          </span>
+        ) : (
+          <span className="event-description">{event.description}</span>
+        )}
       </div>
       <div className="event-meta">
         {event.sentiment && <span className={`tag tag-${event.sentiment}`}>{event.sentiment}</span>}
         {event.confidence != null && <span className="tag">{Math.round(event.confidence * 100)}% sure</span>}
         {event.is_corrected && <span className="tag tag-corrected">corrected</span>}
+        {!editing && (
+          <button type="button" className="btn-link btn-link-icon" onClick={startEdit}>
+            <Pencil size={12} aria-hidden="true" />
+            Edit
+          </button>
+        )}
         <button type="button" className="btn-link btn-link-danger" onClick={handleDelete}>
           Remove
         </button>
       </div>
+    </li>
+  );
+}
+
+function UpdateCard({
+  update,
+  categories,
+  onChange,
+}: {
+  update: UpdateItem;
+  categories: CategoryOption[];
+  onChange: (updated: UpdateItem) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(update.content);
+  const [saving, setSaving] = useState(false);
+  const hasCorrections = update.events.some((e) => e.is_corrected);
+
+  function startEdit() {
+    setDraft(update.content);
+    setEditing(true);
+  }
+
+  async function save() {
+    const content = draft.trim();
+    if (!content || saving) return;
+    if (content === update.content) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      // The server re-reads the new text, so the categorized statements below follow it.
+      onChange(await api.patch<UpdateItem>(`/updates/${update.id}`, { content }));
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      save();
+    } else if (e.key === "Escape") {
+      setEditing(false);
+    }
+  }
+
+  function updateEvent(eventId: number, updated: EventItem | null) {
+    onChange({
+      ...update,
+      events: updated
+        ? update.events.map((e) => (e.id === eventId ? updated : e))
+        : update.events.filter((e) => e.id !== eventId),
+    });
+  }
+
+  return (
+    <li className="card update-card">
+      <div className="update-card-header">
+        <time className="update-time" dateTime={update.created_at}>
+          {timeOfDay(update.created_at)}
+        </time>
+        {!editing && (
+          <button type="button" className="btn-link btn-link-icon" onClick={startEdit}>
+            <Pencil size={12} aria-hidden="true" />
+            Edit update
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="update-edit">
+          <textarea
+            rows={4}
+            aria-label="Edit update"
+            value={draft}
+            autoFocus
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          {hasCorrections && (
+            <p className="hint">Saving re-sorts this update, replacing the statements you edited by hand.</p>
+          )}
+          <div className="update-edit-actions">
+            <button type="button" className="btn-secondary btn-small" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-primary btn-small" disabled={saving || !draft.trim()} onClick={save}>
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="update-content">{update.content}</p>
+      )}
+      {update.events.length > 0 && (
+        <ul className="event-list">
+          {update.events.map((ev) => (
+            <EventRow
+              key={ev.id}
+              event={ev}
+              categories={categories}
+              onChange={(updated) => updateEvent(ev.id, updated)}
+            />
+          ))}
+        </ul>
+      )}
     </li>
   );
 }
@@ -127,19 +299,8 @@ export function Updates() {
     }
   }
 
-  function updateEvent(updateId: number, eventId: number, updated: EventItem | null) {
-    setUpdates((prev) =>
-      prev.map((u) =>
-        u.id !== updateId
-          ? u
-          : {
-              ...u,
-              events: updated
-                ? u.events.map((e) => (e.id === eventId ? updated : e))
-                : u.events.filter((e) => e.id !== eventId),
-            },
-      ),
-    );
+  function replaceUpdate(updated: UpdateItem) {
+    setUpdates((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
   }
 
   return (
@@ -261,24 +422,7 @@ export function Updates() {
 
                 <ol className="timeline">
                   {day.items.map((u) => (
-                    <li key={u.id} className="card update-card">
-                      <time className="update-time" dateTime={u.created_at}>
-                        {timeOfDay(u.created_at)}
-                      </time>
-                      <p className="update-content">{u.content}</p>
-                      {u.events.length > 0 && (
-                        <ul className="event-list">
-                          {u.events.map((ev) => (
-                            <EventRow
-                              key={ev.id}
-                              event={ev}
-                              categories={categories}
-                              onChange={(updated) => updateEvent(u.id, ev.id, updated)}
-                            />
-                          ))}
-                        </ul>
-                      )}
-                    </li>
+                    <UpdateCard key={u.id} update={u} categories={categories} onChange={replaceUpdate} />
                   ))}
                 </ol>
               </section>

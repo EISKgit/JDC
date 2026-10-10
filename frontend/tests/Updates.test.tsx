@@ -112,3 +112,56 @@ describe("Updates history", () => {
     expect(screen.queryByRole("group", { name: "Recent days" })).toBeNull();
   });
 });
+
+describe("Editing updates", () => {
+  function mockApiWithEdits(updates: UpdateItem[]) {
+    const calls: { method: string; url: string; body: unknown }[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      calls.push({ method, url, body });
+      if (method === "PATCH" && url.includes("/updates/")) {
+        const edited = update(3, body.content, updates[0].created_at, "learning");
+        edited.events[0].description = "Studied Python.";
+        return new Response(JSON.stringify(edited));
+      }
+      if (method === "PATCH" && url.includes("/events/")) {
+        return new Response(JSON.stringify({ ...updates[0].events[0], ...body, is_corrected: true }));
+      }
+      return new Response(JSON.stringify(url.endsWith("/categories") ? CATEGORIES : updates));
+    });
+    return calls;
+  }
+
+  it("edits the whole update and shows the re-sorted statements", async () => {
+    const calls = mockApiWithEdits([UPDATES[0]]);
+    renderUpdates();
+    await screen.findByText("Went to the gym", { selector: ".update-content" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit update" }));
+    fireEvent.change(screen.getByLabelText("Edit update"), { target: { value: "studyed python" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("studyed python", { selector: ".update-content" })).toBeTruthy();
+    expect(screen.getByText("Studied Python.", { selector: ".event-description" })).toBeTruthy();
+    expect(calls.find((c) => c.method === "PATCH")).toMatchObject({ body: { content: "studyed python" } });
+  });
+
+  it("edits a single categorized statement", async () => {
+    const calls = mockApiWithEdits([UPDATES[0]]);
+    renderUpdates();
+    await screen.findByText("Went to the gym", { selector: ".update-content" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const input = screen.getByLabelText("Edit statement");
+    fireEvent.change(input, { target: { value: "Went to the gym for leg day." } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(await screen.findByText("Went to the gym for leg day.", { selector: ".event-description" })).toBeTruthy();
+    expect(screen.getByText("corrected")).toBeTruthy();
+    // the paragraph the user typed is untouched
+    expect(screen.getByText("Went to the gym", { selector: ".update-content" })).toBeTruthy();
+    expect(calls.find((c) => c.method === "PATCH")?.url).toMatch(/\/events\/30$/);
+  });
+});

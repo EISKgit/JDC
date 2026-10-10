@@ -351,6 +351,36 @@ h3 {
   font-weight: 600;
 }
 
+.btn-link-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .btn-link-danger {
   color: var(--text-muted);
 }
@@ -845,6 +875,34 @@ h3 {
   border: 3px solid var(--primary);
 }
 
+.update-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.update-card-header .update-time {
+  margin-bottom: 0;
+}
+
+.update-edit {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.update-edit .hint {
+  margin: 0;
+}
+
+.update-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .update-time {
   display: block;
   color: var(--text-muted);
@@ -880,6 +938,7 @@ h3 {
 
 .event-main {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
@@ -904,6 +963,27 @@ h3 {
 
 .event-description {
   font-size: 0.9rem;
+}
+
+.event-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.event-edit input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.55rem;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  outline: none;
 }
 
 .event-meta {

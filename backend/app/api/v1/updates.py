@@ -40,6 +40,35 @@ def create_update(
     return update
 
 
+@router.patch("/{update_id}", response_model=UpdateOut)
+def edit_update(
+    update_id: int,
+    payload: UpdateCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    ai_provider: AIProvider = Depends(get_ai_provider),
+) -> Update:
+    """Replace an update's text and re-extract its events from the new wording.
+
+    Events are derived from the text, so the old ones (including manual
+    corrections to them) are replaced rather than left describing words that
+    are no longer there.
+    """
+    update = _get_owned_update(db, update_id, current_user)
+    update.content = payload.content
+    update.events.clear()
+    db.commit()
+    db.refresh(update)
+
+    try:
+        extract_and_store_events(db, update, ai_provider)
+        db.refresh(update)
+    except AIProviderError:
+        logger.warning("Event extraction failed for edited update %s", update.id, exc_info=True)
+
+    return update
+
+
 @router.get("", response_model=list[UpdateOut])
 def list_updates(
     current_user: User = Depends(get_current_user),
@@ -59,7 +88,11 @@ def get_update(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Update:
+    return _get_owned_update(db, update_id, current_user)
+
+
+def _get_owned_update(db: Session, update_id: int, user: User) -> Update:
     update = db.get(Update, update_id)
-    if update is None or update.user_id != current_user.id:
+    if update is None or update.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Update not found")
     return update

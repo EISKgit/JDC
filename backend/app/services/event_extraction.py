@@ -6,6 +6,7 @@ from app.ai.providers.base import AIProvider
 from app.models.enums import Category, Sentiment
 from app.models.event import Event
 from app.models.update import Update
+from app.services.text_polish import polish_sentence
 
 _DETAIL_KEYS = ("amount", "currency", "duration_minutes")
 
@@ -34,10 +35,13 @@ def extract_and_store_events(db: Session, update: Update, provider: AIProvider) 
             user_id=update.user_id,
             category=category,
             type=str(raw.get("type", "general_activity"))[:64],
-            description=str(raw.get("description", update.content))[:2000],
+            # Shown as a clean statement; the raw update keeps the exact words typed.
+            description=polish_sentence(str(raw.get("description") or update.content))[:2000],
             sentiment=sentiment,
             confidence=raw.get("confidence"),
             details={k: raw[k] for k in _DETAIL_KEYS if k in raw},
+            # Dated by when it happened, so re-extracting an edited update keeps its day.
+            created_at=update.created_at,
         )
         db.add(event)
         events.append(event)

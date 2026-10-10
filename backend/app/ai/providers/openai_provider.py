@@ -10,6 +10,8 @@ _CATEGORY_VALUES = ", ".join(c.value for c in Category)
 
 _EXTRACTION_SYSTEM_PROMPT = f"""You extract structured life events from a user's diary-style update.
 Valid categories: {_CATEGORY_VALUES}.
+Each description is one standalone sentence about a single event, rewritten with correct spelling, grammar and \
+capitalisation, keeping the user's meaning, first-person voice and details (numbers, names).
 Respond ONLY with JSON: {{"events": [{{"category": str, "type": str, "description": str, \
 "sentiment": "positive"|"neutral"|"negative", "confidence": float between 0 and 1, \
 "amount": float (optional), "currency": str (optional), "duration_minutes": int (optional)}}]}}"""
