@@ -3,6 +3,7 @@ from functools import lru_cache
 from typing import Any
 
 from app.ai.providers.base import AIProvider
+from app.ai.text_polish import polish_sentence
 from app.models.enums import Category
 
 # category -> (keywords to match in a sentence, event "type" label to assign).
@@ -114,7 +115,8 @@ class MockProvider(AIProvider):
             event: dict[str, Any] = {
                 "category": category.value,
                 "type": event_type,
-                "description": sentence,
+                # No LLM to rewrite it, so tidy typos/casing by rule; the update keeps the raw text.
+                "description": polish_sentence(sentence),
                 "sentiment": _sentiment(sentence),
                 "confidence": confidence,
             }

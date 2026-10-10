@@ -54,3 +54,36 @@ def test_cannot_edit_someone_elses_update(client):
 
     response = client.patch(f"/api/v1/updates/{created['id']}", headers=other_headers, json={"content": "hacked"})
     assert response.status_code == 404
+
+
+def test_editing_an_update_keeps_hand_fixed_categories(client):
+    headers = auth_headers(client)
+    created = client.post(
+        "/api/v1/updates", headers=headers, json={"content": "Played basketball with my cousins. Went to the gym."}
+    ).json()
+    basketball = created["events"][0]
+    client.patch(f"/api/v1/events/{basketball['id']}", headers=headers, json={"category": "health"})
+
+    edited = client.patch(
+        f"/api/v1/updates/{created['id']}",
+        headers=headers,
+        json={"content": "Played basketball with my cousins for 2 hr. Went to the gym. Studied Python."},
+    ).json()
+
+    first = edited["events"][0]
+    assert first["description"] == "Played basketball with my cousins for 2 hours."  # follows the new text
+    assert first["category"] == "health"  # the hand fix survives
+    assert first["is_corrected"] is True
+    assert [e["is_corrected"] for e in edited["events"][1:]] == [False, False]
+
+
+def test_correction_for_a_removed_sentence_is_dropped(client):
+    headers = auth_headers(client)
+    created = client.post(
+        "/api/v1/updates", headers=headers, json={"content": "Played basketball with my cousins. Went to the gym."}
+    ).json()
+    client.patch(f"/api/v1/events/{created['events'][0]['id']}", headers=headers, json={"category": "health"})
+
+    edited = client.patch(f"/api/v1/updates/{created['id']}", headers=headers, json={"content": "Went to the gym."})
+    events = edited.json()["events"]
+    assert [(e["description"], e["is_corrected"]) for e in events] == [("Went to the gym.", False)]

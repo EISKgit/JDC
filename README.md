@@ -99,15 +99,25 @@ from the `events` table.
 `app/ai/providers/base.py` defines one interface (`AIProvider`) with two methods:
 `extract_events(text)` and `generate_narrative(kind, context)`. Nothing else in the
 codebase talks to a specific AI vendor — the extraction service, onboarding, and the
-intelligence engine only ever depend on this interface. Two implementations exist:
+intelligence engine only ever depend on this interface. The implementations:
 
 - **`MockProvider`** (default, `AI_PROVIDER=mock`) — no API key needed. Deterministic,
   rule-based: keyword-matches sentences to categories, regex-extracts
   amounts/durations, and picks sentiment from small positive/negative word lists.
+  Statements are tidied by rule (`app/ai/text_polish.py`: one-letter typo fixes,
+  casing, "and also" openers) — real grammar fixes need an LLM provider.
   Good enough to make the whole app runnable and demoable with zero setup.
-- **`OpenAIProvider`** (`AI_PROVIDER=openai`) — calls OpenAI's Chat Completions API
-  directly over HTTP (`httpx`, no vendor SDK), asking for JSON-formatted responses.
-  Real AI output, no other code changes required to switch to it.
+- **`OpenAIProvider`** (`AI_PROVIDER=groq` or `openai`) — calls any OpenAI-compatible
+  Chat Completions API (Groq's free API or OpenAI) directly over HTTP (`httpx`, no
+  vendor SDK), asking for JSON-formatted responses. It rewrites each statement with
+  correct spelling and grammar. No other code changes required to switch to it.
+- **`FallbackProvider`** wraps the real provider: any failed or rate-limited call
+  falls back to `MockProvider`, so the app never loses events to an API error.
+  Narratives are cached by their inputs, and only the summary/recommendation use the
+  LLM — the 7 forecast lines are formulaic, so templates keep a dashboard load to ~2 LLM calls.
+
+To rebuild the statements of updates saved earlier (e.g. after switching provider):
+`.venv/Scripts/python.exe -m app.reextract` (keeps hand-fixed categories).
 
 ### Scoring, trends, and forecasts — the actual formulas
 
@@ -155,6 +165,7 @@ ILC/
 │   │   ├── test_mock_extraction.py      mock AI keyword classification
 │   │   ├── test_dashboard.py            dashboard empty state + readable narratives
 │   │   ├── test_text_polish.py            event statements: typo/casing cleanup
+│   │   ├── test_ai_providers.py           Groq request, LLM fallback, narrative cache
 │   │   ├── test_update_edits.py             editing an update or a single statement
 │   │   └── test_timestamps.py             API timestamps carry an explicit UTC offset
 │   └── app/
@@ -179,11 +190,13 @@ ILC/
 │       │   ├── providers/
 │       │   │   ├── base.py               AIProvider interface + AIProviderError
 │       │   │   ├── mock.py                 deterministic, no-API-key provider
-│       │   │   └── openai_provider.py        real OpenAI-backed provider
+│       │   │   ├── openai_provider.py        real LLM provider (Groq / OpenAI)
+│       │   │   └── fallback.py                 LLM with rule fallback + narrative cache
+│       │   ├── text_polish.py            rule-based statement tidy-up (mock provider)
 │       │   └── factory.py                get_ai_provider() — picks a provider from .env
 │       ├── services/                Business logic (no HTTP concerns here)
-│       │   ├── event_extraction.py    runs AI extraction, persists Event rows
-│       │   ├── text_polish.py           tidies event statements (typos, casing)
+│       │   ├── event_extraction.py    runs AI extraction, persists Event rows,
+│       │   │                            re-extracts edited updates keeping fixes
 │       │   ├── metrics.py               deterministic counts + score formulas
 │       │   ├── forecasting.py             trend classification (compute_trend)
 │       │   └── intelligence.py              orchestrates metrics+AI into summaries,
@@ -363,7 +376,8 @@ A full walkthrough of the product loop, using either the UI at
 > as Finance when there's an amount (`$`/`₹`) or no duration — *"Spent 2 hours
 > studying"* is Learning, *"Spent $800 eating out"* is Finance. Sentences with no
 > keyword fall back to Lifestyle. It's still a simple rule-based stand-in; a real
-> provider (`AI_PROVIDER=openai`) understands free-form text far better.
+> provider (`AI_PROVIDER=groq` with a free key from https://console.groq.com/keys)
+> understands free-form text far better and fixes grammar in the statements.
 
 ## API reference
 
@@ -410,8 +424,10 @@ schemas: `http://localhost:8000/docs`.
 | `CORS_ORIGINS`                                | `http://localhost:5173`                             | Comma-separated list of allowed browser origins                    |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | *(blank)*                                           | Leave blank to disable Google sign-in (returns 501, doesn't crash) |
 | `GOOGLE_REDIRECT_URI`                         | `http://localhost:8000/api/v1/auth/google/callback` | Must match the Google Cloud Console OAuth client config            |
-| `AI_PROVIDER`                                 | `mock`                                              | `mock` (no key needed) or `openai`                             |
-| `OPENAI_API_KEY`                              | *(blank)*                                           | Required only if`AI_PROVIDER=openai`                             |
+| `AI_PROVIDER`                                 | `mock`                                              | `mock` (no key needed), `groq` or `openai`                     |
+| `GROQ_API_KEY`                                | *(blank)*                                           | Required only if `AI_PROVIDER=groq`                              |
+| `GROQ_MODEL`                                  | `openai/gpt-oss-120b`                               | Any Groq chat model that supports JSON mode                        |
+| `OPENAI_API_KEY`                              | *(blank)*                                           | Required only if `AI_PROVIDER=openai`                            |
 | `OPENAI_MODEL`                                | `gpt-4o-mini`                                       | Any OpenAI chat-completions-compatible model                       |
 
 ### Frontend (`frontend/.env.local`, copy from `.env.example`)

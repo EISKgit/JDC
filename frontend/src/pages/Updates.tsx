@@ -199,7 +199,9 @@ function UpdateCard({
             onKeyDown={handleKeyDown}
           />
           {hasCorrections && (
-            <p className="hint">Saving re-sorts this update, replacing the statements you edited by hand.</p>
+            <p className="hint">
+              Statements are rebuilt from the new text. Categories you fixed stay for sentences you keep.
+            </p>
           )}
           <div className="update-edit-actions">
             <button type="button" className="btn-secondary btn-small" onClick={() => setEditing(false)}>

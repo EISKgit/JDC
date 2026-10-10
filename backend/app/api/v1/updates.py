@@ -10,7 +10,7 @@ from app.db.session import get_db
 from app.models.update import Update
 from app.models.user import User
 from app.schemas.update import UpdateCreate, UpdateOut
-from app.services.event_extraction import extract_and_store_events
+from app.services.event_extraction import extract_and_store_events, reextract_events
 
 logger = logging.getLogger(__name__)
 
@@ -50,19 +50,15 @@ def edit_update(
 ) -> Update:
     """Replace an update's text and re-extract its events from the new wording.
 
-    Events are derived from the text, so the old ones (including manual
-    corrections to them) are replaced rather than left describing words that
-    are no longer there.
+    Statements follow the new text; categories the user fixed by hand are kept
+    for sentences that are still there (see `reextract_events`).
     """
     update = _get_owned_update(db, update_id, current_user)
     update.content = payload.content
-    update.events.clear()
     db.commit()
-    db.refresh(update)
 
     try:
-        extract_and_store_events(db, update, ai_provider)
-        db.refresh(update)
+        reextract_events(db, update, ai_provider)
     except AIProviderError:
         logger.warning("Event extraction failed for edited update %s", update.id, exc_info=True)
 

@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.text_polish import polish_sentence
+from app.ai.text_polish import polish_sentence
 
 
 @pytest.mark.parametrize(

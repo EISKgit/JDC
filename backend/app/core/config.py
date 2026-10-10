@@ -26,10 +26,12 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
 
-    # AI provider
+    # AI provider: "mock" (rule-based, no key), "openai" or "groq"
     ai_provider: str = "mock"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
 
     @property
     def cors_origins_list(self) -> list[str]:
