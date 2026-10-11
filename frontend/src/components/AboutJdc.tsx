@@ -150,7 +150,24 @@ function WhereToLook() {
           <span className="map-label">Pick a day or date</span>
         </div>
         <div className="map-zone map-timeline">
-          <span className="map-label">History, grouped by day</span>
+          <span className="map-label">History by day, edit or delete</span>
+        </div>
+      </div>
+
+      <div className="map-screen" role="listitem">
+        <span className="map-title">Ask JDC</span>
+        <div className="map-zone map-bubble-user">
+          <span className="map-label">"When did I last go to the gym?"</span>
+        </div>
+        <div className="map-zone map-bubble-answer">
+          <span className="map-label">Answer from your entries</span>
+          <span className="map-cites" aria-hidden="true">
+            <span>1</span>
+            <span>2</span>
+          </span>
+        </div>
+        <div className="map-zone">
+          <span className="map-label">Linked sources</span>
         </div>
       </div>
     </div>

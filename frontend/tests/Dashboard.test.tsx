@@ -81,7 +81,7 @@ describe("JDC guide on the dashboard", () => {
 
     const map = screen.getByRole("list", { name: "Where to find your results" });
     expect(within(map).getByText("Life score 0–100")).toBeTruthy();
-    expect(within(map).getByText("History, grouped by day")).toBeTruthy();
+    expect(within(map).getByText("History by day, edit or delete")).toBeTruthy();
 
     expect(screen.getByRole("link", { name: /Set up Life Profile/ }).getAttribute("href")).toBe("/onboarding");
     expect(screen.getByRole("link", { name: /2\. Write an update/ }).getAttribute("href")).toBe("/updates");

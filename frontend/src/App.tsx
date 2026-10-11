@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
+import { Ask } from "./pages/Ask";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
@@ -31,6 +32,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Updates />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ask"
+            element={
+              <ProtectedRoute>
+                <Ask />
               </ProtectedRoute>
             }
           />

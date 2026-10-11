@@ -1,4 +1,4 @@
-import { LayoutDashboard, NotebookPen, UserRound } from "lucide-react";
+import { LayoutDashboard, MessageCircleQuestion, NotebookPen, UserRound } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Logo } from "./Logo";
@@ -6,6 +6,7 @@ import { Logo } from "./Logo";
 const LINKS = [
   { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { to: "/updates", label: "Updates", Icon: NotebookPen },
+  { to: "/ask", label: "Ask JDC", Icon: MessageCircleQuestion },
   { to: "/onboarding", label: "Life Profile", Icon: UserRound },
 ];
 

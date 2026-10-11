@@ -22,8 +22,15 @@ def extract_and_store_events(db: Session, update: Update, provider: AIProvider) 
     failing the whole update — the raw update itself is never at risk of being
     lost because of a bad or missing AI response (see the calling endpoint).
     """
-    raw_events: list[dict[str, Any]] = provider.extract_events(update.content)
+    events = _build_events(update, provider.extract_events(update.content))
+    db.add_all(events)
+    db.commit()
+    for event in events:
+        db.refresh(event)
+    return events
 
+
+def _build_events(update: Update, raw_events: list[dict[str, Any]]) -> list[Event]:
     events: list[Event] = []
     for raw in raw_events:
         try:
@@ -37,24 +44,20 @@ def extract_and_store_events(db: Session, update: Update, provider: AIProvider) 
         if not description:
             continue
 
-        event = Event(
-            update_id=update.id,
-            user_id=update.user_id,
-            category=category,
-            type=str(raw.get("type", "general_activity"))[:64],
-            description=description[:2000],
-            sentiment=sentiment,
-            confidence=raw.get("confidence"),
-            details={k: raw[k] for k in _DETAIL_KEYS if k in raw},
-            # Dated by when it happened, so re-extracting an edited update keeps its day.
-            created_at=update.created_at,
+        events.append(
+            Event(
+                update_id=update.id,
+                user_id=update.user_id,
+                category=category,
+                type=str(raw.get("type", "general_activity"))[:64],
+                description=description[:2000],
+                sentiment=sentiment,
+                confidence=raw.get("confidence"),
+                details={k: raw[k] for k in _DETAIL_KEYS if k in raw},
+                # Dated by when it happened, so re-extracting an edited update keeps its day.
+                created_at=update.created_at,
+            )
         )
-        db.add(event)
-        events.append(event)
-
-    db.commit()
-    for event in events:
-        db.refresh(event)
     return events
 
 
@@ -64,14 +67,19 @@ def reextract_events(db: Session, update: Update, provider: AIProvider) -> list[
     Statements always follow the new text, but a category/sentiment the user
     fixed by hand is carried over to the new event for the same sentence, so
     editing the paragraph doesn't undo their corrections.
+
+    Extraction runs *before* anything is deleted: if it fails, the update keeps
+    its previous events instead of being left with none.
     """
+    raw_events = provider.extract_events(update.content)
+
     corrections = [
         (e.description, e.category, e.type, e.sentiment) for e in update.events if e.is_corrected
     ]
     update.events.clear()
-    db.commit()
-
-    events = extract_and_store_events(db, update, provider)
+    events = _build_events(update, raw_events)
+    db.add_all(events)
+    db.flush()
 
     unmatched = list(events)
     for old_description, category, event_type, sentiment in corrections:

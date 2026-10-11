@@ -72,3 +72,10 @@ export function currentStreak(keys: Iterable<string>, now: Date = new Date()): n
   }
   return streak;
 }
+
+/** The browser's UTC offset for a local day, as JavaScript reports it (UTC minus local, in minutes;
+ * India is -330). Taken per day so daylight-saving changes are respected. The API uses it to turn
+ * local days into UTC ranges. */
+export function tzOffsetFor(key: string): number {
+  return parseDayKey(key).getTimezoneOffset();
+}

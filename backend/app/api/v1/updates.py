@@ -65,6 +65,23 @@ def edit_update(
     return update
 
 
+@router.delete("/{update_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_update(
+    update_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete an update and every event extracted from it.
+
+    Nothing derived is stored anywhere else: scores, trends, warnings, forecasts,
+    the history and "Ask JDC" are all computed from the remaining events on
+    request, so they re-estimate as soon as this commits.
+    """
+    update = _get_owned_update(db, update_id, current_user)
+    db.delete(update)  # events go with it (cascade="all, delete-orphan")
+    db.commit()
+
+
 @router.get("", response_model=list[UpdateOut])
 def list_updates(
     current_user: User = Depends(get_current_user),

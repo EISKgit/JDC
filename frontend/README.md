@@ -34,8 +34,8 @@ src/
 ├── context/       auth state (JWT in localStorage)
 ├── components/     shared UI (nav bar, route guard, JDC guide, auth layout, logo, category icon)
 ├── lib/            category icons/colors, date grouping helpers
-└── pages/            Login, Signup, Onboarding, Updates, Dashboard
-tests/            Vitest suite (API client, route guard, dashboard, update history, dates, no-emoji)
+└── pages/            Login, Signup, Onboarding, Updates, Ask, Dashboard
+tests/            Vitest suite (API client, route guard, dashboard, update history/edit/delete, Ask, dates, no-emoji)
 ```
 
 ## Conventions

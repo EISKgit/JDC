@@ -112,3 +112,21 @@ export interface Dashboard {
   recommendation: string;
   forecast_7day: ForecastItem[];
 }
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AskResponse {
+  answer: string;
+  sources: UpdateItem[];
+  used_ai: boolean;
+}
+
+export interface DaySummary {
+  day: string;
+  summary: string;
+  entry_count: number;
+  used_ai: boolean;
+}

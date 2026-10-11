@@ -1,9 +1,19 @@
-import { CalendarX, Check, Flame, NotebookPen, Pencil, X } from "lucide-react";
+import { CalendarX, Check, FileText, Flame, NotebookPen, Pencil, Trash2, X } from "lucide-react";
 import { type CSSProperties, type FormEvent, type KeyboardEvent, useEffect, useMemo, useState } from "react";
-import { api } from "../api/client";
-import type { Category, CategoryOption, EventItem, UpdateItem } from "../api/types";
+import { useSearchParams } from "react-router-dom";
+import { ApiError, api } from "../api/client";
+import type { Category, CategoryOption, DaySummary, EventItem, UpdateItem } from "../api/types";
 import { categoryMeta } from "../lib/categories";
-import { currentStreak, dayKey, groupByDay, longDate, relativeDayLabel, shortDate, timeOfDay } from "../lib/dates";
+import {
+  currentStreak,
+  dayKey,
+  groupByDay,
+  longDate,
+  relativeDayLabel,
+  shortDate,
+  timeOfDay,
+  tzOffsetFor,
+} from "../lib/dates";
 
 const RECENT_DAY_CHIPS = 10;
 
@@ -125,15 +135,32 @@ function UpdateCard({
   update,
   categories,
   onChange,
+  onDelete,
 }: {
   update: UpdateItem;
   categories: CategoryOption[];
   onChange: (updated: UpdateItem) => void;
+  onDelete: (id: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(update.content);
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const hasCorrections = update.events.some((e) => e.is_corrected);
+
+  async function confirmDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.delete(`/updates/${update.id}`);
+      onDelete(update.id);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Could not delete this entry");
+      setDeleting(false);
+    }
+  }
 
   function startEdit() {
     setDraft(update.content);
@@ -181,13 +208,47 @@ function UpdateCard({
         <time className="update-time" dateTime={update.created_at}>
           {timeOfDay(update.created_at)}
         </time>
-        {!editing && (
-          <button type="button" className="btn-link btn-link-icon" onClick={startEdit}>
-            <Pencil size={12} aria-hidden="true" />
-            Edit update
-          </button>
+        {!editing && !confirmingDelete && (
+          <span className="update-card-actions">
+            <button type="button" className="btn-link btn-link-icon" onClick={startEdit}>
+              <Pencil size={12} aria-hidden="true" />
+              Edit update
+            </button>
+            <button
+              type="button"
+              className="btn-link btn-link-icon btn-link-danger"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              <Trash2 size={12} aria-hidden="true" />
+              Delete
+            </button>
+          </span>
         )}
       </div>
+      {confirmingDelete && (
+        <div className="delete-confirm" role="alertdialog" aria-label="Confirm delete">
+          <p>
+            Delete this entry
+            {update.events.length > 0 &&
+              ` and its ${update.events.length} ${update.events.length === 1 ? "statement" : "statements"}`}
+            ? Your scores, trends and insights will be recalculated without it.
+          </p>
+          {deleteError && <p className="form-error">{deleteError}</p>}
+          <div className="delete-confirm-actions">
+            <button
+              type="button"
+              className="btn-secondary btn-small"
+              disabled={deleting}
+              onClick={() => setConfirmingDelete(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" className="btn-danger btn-small" disabled={deleting} onClick={confirmDelete}>
+              {deleting ? "Deleting..." : "Delete entry"}
+            </button>
+          </div>
+        </div>
+      )}
       {editing ? (
         <div className="update-edit">
           <textarea
@@ -231,6 +292,44 @@ function UpdateCard({
   );
 }
 
+function DaySummaryPanel({ dayKey: key }: { dayKey: string }) {
+  const [result, setResult] = useState<DaySummary | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function summarize() {
+    setLoading(true);
+    setError(null);
+    try {
+      setResult(
+        await api.post<DaySummary>("/assistant/day-summary", { day: key, tz_offset_minutes: tzOffsetFor(key) }),
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not summarize this day");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!result) {
+    return (
+      <div className="day-summary-trigger">
+        <button type="button" className="btn-link btn-link-icon" disabled={loading} onClick={summarize}>
+          <FileText size={13} aria-hidden="true" />
+          {loading ? "Summarizing..." : "Summarize day"}
+        </button>
+        {error && <span className="form-error">{error}</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="day-summary" aria-live="polite">
+      <span className="day-summary-label">{result.used_ai ? "AI summary" : "Summary"}</span>
+      <p>{result.summary}</p>
+    </div>
+  );
+}
+
 function DayCategorySummary({ updates }: { updates: UpdateItem[] }) {
   const counts = new Map<string, number>();
   for (const u of updates) for (const e of u.events) counts.set(e.category, (counts.get(e.category) ?? 0) + 1);
@@ -256,7 +355,12 @@ export function Updates() {
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  // "Ask JDC" source links open a specific day: /updates?date=YYYY-MM-DD
+  const [selectedDay, setSelectedDay] = useState<string | null>(() => {
+    const date = searchParams.get("date");
+    return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+  });
 
   useEffect(() => {
     async function load() {
@@ -303,6 +407,10 @@ export function Updates() {
 
   function replaceUpdate(updated: UpdateItem) {
     setUpdates((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+  }
+
+  function removeUpdate(id: number) {
+    setUpdates((prev) => prev.filter((u) => u.id !== id));
   }
 
   return (
@@ -421,10 +529,21 @@ export function Updates() {
                   </span>
                 </header>
                 <DayCategorySummary updates={day.items} />
+                {/* Keyed by the day's current text: an edit or delete resets a summary that no longer matches. */}
+                <DaySummaryPanel
+                  key={day.items.map((u) => `${u.id}:${u.content}`).join("|")}
+                  dayKey={day.key}
+                />
 
                 <ol className="timeline">
                   {day.items.map((u) => (
-                    <UpdateCard key={u.id} update={u} categories={categories} onChange={replaceUpdate} />
+                    <UpdateCard
+                      key={u.id}
+                      update={u}
+                      categories={categories}
+                      onChange={replaceUpdate}
+                      onDelete={removeUpdate}
+                    />
                   ))}
                 </ol>
               </section>

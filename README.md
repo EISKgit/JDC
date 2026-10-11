@@ -84,7 +84,9 @@ from the `events` table.
    same request, synchronously. Each event's description is tidied into a clean
    sentence (typos, casing, "and also" openers) while the update keeps the exact
    words typed. If AI extraction fails, the update itself is still safely saved.
-   Editing the update (`PATCH /updates/{id}`) re-extracts its events from the new text.
+   Editing the update (`PATCH /updates/{id}`) re-extracts its events from the new text
+   (extraction runs first, so a failure keeps the old events); `DELETE /updates/{id}`
+   removes the update and all its events.
 4. **Correct an event** (`PATCH /events/{id}`) → fixes a wrong category/type/
    description/sentiment and flags it `is_corrected`; `DELETE /events/{id}` removes one that
    shouldn't exist.
@@ -92,7 +94,11 @@ from the `events` table.
    `GET /dashboard`, `GET /intelligence/forecast`) → on each request, the backend
    pulls the relevant `Event` rows for the time window, computes scores/trends/
    evidence/warnings deterministically, then makes one AI call to phrase a
-   narrative, a recommendation, and any warnings in plain language.
+   narrative, a recommendation, and any warnings in plain language. Nothing derived
+   is stored, so every edit or deletion is reflected on the next request.
+6. **Ask JDC** (`POST /assistant/ask`) → a LangGraph agent answers questions about
+   the journal using read-only tools over the user's data, citing entries; see
+   [Ask JDC](#ask-jdc-agentic-rag-over-your-journal) below.
 
 ### The AI provider abstraction
 
@@ -118,6 +124,34 @@ intelligence engine only ever depend on this interface. The implementations:
 
 To rebuild the statements of updates saved earlier (e.g. after switching provider):
 `.venv/Scripts/python.exe -m app.reextract` (keeps hand-fixed categories).
+
+### Ask JDC: agentic RAG over your journal
+
+`app/ai/assistant.py` answers free-form questions ("When did I last go to the gym?",
+"How was my health this week?") from the user's own entries only:
+
+```text
+question -> [agent: Groq LLM] --tool call--> [tools] --results--> [agent] -> answer + [#id] citations
+
+  tools:  search_journal   BM25 keyword search (+ date / area filters)   app/services/journal_search.py
+          entries_on_date  everything logged on one local day
+          area_stats       per-area counts, scores, trends (same formulas as the dashboard)
+```
+
+- **LangGraph** runs the loop (`StateGraph`: `agent` node and a `ToolNode`, at most
+  ~4 tool rounds); **LangChain-Groq** (`ChatGroq`) is the model, with tool calling.
+- **Retrieval is index-free**: each search reads the user's current entries from
+  the database and ranks them with BM25 (`rank-bm25`) in memory. A personal journal
+  is small, so this is fast, and there is no vector store that could go stale:
+  edits and deletions are reflected in the very next answer.
+- Cited `[#id]`s are checked against the user's own entries and returned as source
+  cards; made-up ids are dropped. Dates use the browser's timezone offset.
+- **Day summaries** (`POST /assistant/day-summary`, the *Summarize day* button in
+  the history) send one day's entries to the model; results are cached by the
+  entries' current text, so an edit or delete produces a fresh summary.
+- **Without an LLM** (`AI_PROVIDER` isn't `groq`, no key, or the call fails) both
+  degrade instead of erroring: Ask returns the best-matching entries ("search
+  only"), and the day summary lists the areas touched.
 
 ### Scoring, trends, and forecasts — the actual formulas
 
@@ -167,6 +201,8 @@ ILC/
 │   │   ├── test_text_polish.py            event statements: typo/casing cleanup
 │   │   ├── test_ai_providers.py           Groq request, LLM fallback, narrative cache
 │   │   ├── test_update_edits.py             editing an update or a single statement
+│   │   ├── test_update_delete.py            deleting updates; dashboard re-estimates
+│   │   ├── test_assistant.py                Ask JDC: retrieval, LangGraph agent, day summary
 │   │   └── test_timestamps.py             API timestamps carry an explicit UTC offset
 │   └── app/
 │       ├── main.py               creates the FastAPI app, CORS, DB startup
@@ -192,6 +228,7 @@ ILC/
 │       │   │   ├── mock.py                 deterministic, no-API-key provider
 │       │   │   ├── openai_provider.py        real LLM provider (Groq / OpenAI)
 │       │   │   └── fallback.py                 LLM with rule fallback + narrative cache
+│       │   ├── assistant.py              Ask JDC: LangGraph agent + tools, day summaries
 │       │   ├── text_polish.py            rule-based statement tidy-up (mock provider)
 │       │   └── factory.py                get_ai_provider() — picks a provider from .env
 │       ├── services/                Business logic (no HTTP concerns here)
@@ -199,6 +236,7 @@ ILC/
 │       │   │                            re-extracts edited updates keeping fixes
 │       │   ├── metrics.py               deterministic counts + score formulas
 │       │   ├── forecasting.py             trend classification (compute_trend)
+│       │   ├── journal_search.py          BM25 search over a user's entries (RAG retrieval)
 │       │   └── intelligence.py              orchestrates metrics+AI into summaries,
 │       │                                       forecasts, and the dashboard payload
 │       └── api/v1/                 HTTP endpoints (thin — delegate to services)
@@ -207,7 +245,8 @@ ILC/
 │           ├── categories.py             GET /categories (the 7 fixed categories)
 │           ├── onboarding.py               GET/PUT /onboarding
 │           ├── goals.py                      goals CRUD
-│           ├── updates.py                      updates create/list/detail/edit (+ extraction)
+│           ├── updates.py                      updates create/list/detail/edit/delete (+ extraction)
+│           ├── assistant.py                      Ask JDC + day summaries
 │           ├── events.py                         manual event correction/deletion
 │           └── intelligence.py                     daily/weekly/monthly/forecast/dashboard
 │
@@ -243,6 +282,7 @@ ILC/
 │       └── pages/
 │           ├── Login.tsx / Signup.tsx
 │           ├── Onboarding.tsx                     the "Life Profile" form
+│           ├── Ask.tsx                              "Ask JDC" chat with cited sources
 │           ├── Updates.tsx                          "What happened today?", date-wise
 │           │                                          history, event correction
 │           └── Dashboard.tsx                          "Your Life Overview"
@@ -348,13 +388,15 @@ A full walkthrough of the product loop, using either the UI at
 4. **Correct anything the AI got wrong** — change an event's category from the
    dropdown, reword a statement with **Edit**, or remove one that shouldn't exist.
    **Edit update** rewrites the whole paragraph and re-sorts its statements to match. Corrections are tracked
-   (`is_corrected`).
+   (`is_corrected`). **Delete** removes an entry with all its statements (after a
+   confirmation); the dashboard, history and Ask JDC re-estimate without it.
 5. **Look back through your history** — below the update box, entries are grouped
    by day (*Today*, *Yesterday*, then full dates), each day showing which life
    areas it touched. Click a day chip to see just that day, or use **Jump to date**
    to pick any date; **Show all days** returns to the full list. The header shows
    your total entries, days logged, and current daily streak. Days follow your
-   local timezone.
+   local timezone. **Summarize day** under a date asks the AI for a 2-3 sentence
+   summary of that day.
 6. **Check the dashboard** at `/dashboard` — overall score, per-category scores
    with trend arrows, the week's top observation, any warnings (e.g. repeated
    negative-sentiment events in one category), a recommendation, and a 7-day
@@ -366,7 +408,9 @@ A full walkthrough of the product loop, using either the UI at
    Updates screens labelling where each result appears. It's open for new users
    and collapsed once you have data (**How JDC works** reopens it, and your choice
    is remembered).
-7. Keep logging updates over multiple days — scores, trends, and forecasts become
+7. **Ask JDC** at `/ask`: ask questions about your journal in plain words. Answers
+   cite the entries they're based on; click a source to open that day in the history.
+8. Keep logging updates over multiple days — scores, trends, and forecasts become
    more meaningful as more evidence accumulates (a single day of data will
    correctly show "not enough data" for most trends, by design).
 
@@ -403,6 +447,7 @@ schemas: `http://localhost:8000/docs`.
 | GET    | `/updates`                            | List updates (with their events)                        |
 | GET    | `/updates/{id}`                       | One update, with its events                             |
 | PATCH  | `/updates/{id}`                       | Edit an update's text (re-extracts its events)          |
+| DELETE | `/updates/{id}`                       | Delete an update and all its events                     |
 | PATCH  | `/events/{id}`                        | Correct an event's category/type/description/sentiment  |
 | DELETE | `/events/{id}`                        | Remove an incorrect event                               |
 | GET    | `/intelligence/daily`                 | 1-day summary: scores, evidence, warnings, narrative    |
@@ -410,6 +455,8 @@ schemas: `http://localhost:8000/docs`.
 | GET    | `/intelligence/monthly`               | 30-day summary                                          |
 | GET    | `/intelligence/forecast?horizon=7\|30` | Per-category forecast                                   |
 | GET    | `/dashboard`                          | Trimmed "3-5 things that matter" view                   |
+| POST   | `/assistant/ask`                      | Ask JDC: answer from your entries, with sources         |
+| POST   | `/assistant/day-summary`              | AI summary of one local day                             |
 | GET    | `/health` *(not under /api/v1)*     | Liveness check                                          |
 
 ## Configuration reference
@@ -424,10 +471,10 @@ schemas: `http://localhost:8000/docs`.
 | `CORS_ORIGINS`                                | `http://localhost:5173`                             | Comma-separated list of allowed browser origins                    |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | *(blank)*                                           | Leave blank to disable Google sign-in (returns 501, doesn't crash) |
 | `GOOGLE_REDIRECT_URI`                         | `http://localhost:8000/api/v1/auth/google/callback` | Must match the Google Cloud Console OAuth client config            |
-| `AI_PROVIDER`                                 | `mock`                                              | `mock` (no key needed), `groq` or `openai`                     |
-| `GROQ_API_KEY`                                | *(blank)*                                           | Required only if `AI_PROVIDER=groq`                              |
+| `AI_PROVIDER`                                 | `mock`                                              | `mock` (no key needed), `groq` or `openai`                   |
+| `GROQ_API_KEY`                                | *(blank)*                                           | Required only if`AI_PROVIDER=groq`                               |
 | `GROQ_MODEL`                                  | `openai/gpt-oss-120b`                               | Any Groq chat model that supports JSON mode                        |
-| `OPENAI_API_KEY`                              | *(blank)*                                           | Required only if `AI_PROVIDER=openai`                            |
+| `OPENAI_API_KEY`                              | *(blank)*                                           | Required only if`AI_PROVIDER=openai`                             |
 | `OPENAI_MODEL`                                | `gpt-4o-mini`                                       | Any OpenAI chat-completions-compatible model                       |
 
 ### Frontend (`frontend/.env.local`, copy from `.env.example`)

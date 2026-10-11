@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { UpdateItem } from "../src/api/types";
@@ -163,5 +163,104 @@ describe("Editing updates", () => {
     // the paragraph the user typed is untouched
     expect(screen.getByText("Went to the gym", { selector: ".update-content" })).toBeTruthy();
     expect(calls.find((c) => c.method === "PATCH")?.url).toMatch(/\/events\/30$/);
+  });
+});
+
+describe("Deleting updates", () => {
+  function mockApiWithDelete(updates: UpdateItem[], deleteStatus = 204) {
+    const calls: { method: string; url: string }[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      calls.push({ method, url });
+      if (method === "DELETE") {
+        return deleteStatus === 204
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ detail: "Update not found" }), { status: deleteStatus });
+      }
+      return new Response(JSON.stringify(url.endsWith("/categories") ? CATEGORIES : updates));
+    });
+    return calls;
+  }
+
+  it("asks for confirmation, then deletes the entry and its day group", async () => {
+    const calls = mockApiWithDelete([UPDATES[0], UPDATES[1]]);
+    renderUpdates();
+    await screen.findByText("Went to the gym", { selector: ".update-content" });
+
+    const todayGroup = screen.getByRole("heading", { name: "Today" }).closest("section")!;
+    fireEvent.click(within(todayGroup).getByRole("button", { name: "Delete" }));
+    expect(screen.getByRole("alertdialog", { name: "Confirm delete" }).textContent).toMatch(
+      /Delete this entry and its 1 statement\?/,
+    );
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false); // nothing deleted before confirming
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete entry" }));
+    await waitFor(() =>
+      expect(document.querySelector(".history-stats")?.textContent).toMatch(/^1 entry across 1 day/),
+    );
+    expect(screen.queryByText("Went to the gym", { selector: ".update-content" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Today" })).toBeNull();
+    expect(calls.find((c) => c.method === "DELETE")?.url).toMatch(/\/updates\/3$/);
+  });
+
+  it("cancel keeps the entry", async () => {
+    const calls = mockApiWithDelete([UPDATES[0]]);
+    renderUpdates();
+    await screen.findByText("Went to the gym", { selector: ".update-content" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.getByText("Went to the gym", { selector: ".update-content" })).toBeTruthy();
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+  });
+
+  it("shows an error and keeps the entry if the delete fails", async () => {
+    mockApiWithDelete([UPDATES[0]], 404);
+    renderUpdates();
+    await screen.findByText("Went to the gym", { selector: ".update-content" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete entry" }));
+    expect(await screen.findByText("Update not found")).toBeTruthy();
+    expect(screen.getByText("Went to the gym", { selector: ".update-content" })).toBeTruthy();
+  });
+});
+
+describe("Day summaries and deep links", () => {
+  it("summarizes a day with the browser's timezone offset", async () => {
+    let request: { url: string; body: { day: string; tz_offset_minutes: number } } | null = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/assistant/day-summary")) {
+        request = { url, body: JSON.parse(String(init?.body)) };
+        return new Response(
+          JSON.stringify({ day: request.body.day, summary: "You trained hard today.", entry_count: 1, used_ai: true }),
+        );
+      }
+      return new Response(JSON.stringify(url.endsWith("/categories") ? CATEGORIES : [UPDATES[0]]));
+    });
+    renderUpdates();
+    await screen.findByText("Went to the gym", { selector: ".update-content" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Summarize day" }));
+    expect(await screen.findByText("You trained hard today.")).toBeTruthy();
+    expect(screen.getByText("AI summary")).toBeTruthy();
+    const today = dayKey(new Date(UPDATES[0].created_at));
+    expect(request!.body).toEqual({ day: today, tz_offset_minutes: new Date().getTimezoneOffset() });
+  });
+
+  it("opens the day given in ?date= (used by Ask JDC source links)", async () => {
+    mockApi(UPDATES);
+    const fiveDaysAgo = dayKey(new Date(UPDATES[2].created_at));
+    render(
+      <MemoryRouter initialEntries={[`/updates?date=${fiveDaysAgo}`]}>
+        <Updates />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Walked in the park", { selector: ".update-content" })).toBeTruthy();
+    expect(screen.queryByText("Went to the gym", { selector: ".update-content" })).toBeNull();
+    expect((screen.getByLabelText("Jump to date") as HTMLInputElement).value).toBe(fiveDaysAgo);
   });
 });
