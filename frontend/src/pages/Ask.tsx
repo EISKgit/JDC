@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type { AskResponse, ChatTurn, UpdateItem } from "../api/types";
 import { CategoryIcon } from "../components/CategoryIcon";
+import { PrivacyNote } from "../components/Feedback";
 import { dayKey, longDate, relativeDayLabel, timeOfDay } from "../lib/dates";
 
 const SUGGESTIONS = [
@@ -120,6 +121,7 @@ export function Ask() {
         <p className="eyebrow">Ask JDC</p>
         <h1>Ask about your journal</h1>
         <p className="page-subtitle">Answers come only from your own entries, with links to the ones used.</p>
+        <PrivacyNote compact />
       </header>
 
       {messages.length === 0 && (

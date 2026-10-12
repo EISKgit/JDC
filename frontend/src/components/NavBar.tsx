@@ -1,11 +1,12 @@
-import { LayoutDashboard, MessageCircleQuestion, NotebookPen, UserRound } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { LayoutDashboard, MessageCircleQuestion, NotebookPen, Target, UserRound } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Logo } from "./Logo";
 
 const LINKS = [
   { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { to: "/updates", label: "Updates", Icon: NotebookPen },
+  { to: "/goals", label: "Goals", Icon: Target },
   { to: "/ask", label: "Ask JDC", Icon: MessageCircleQuestion },
   { to: "/onboarding", label: "Life Profile", Icon: UserRound },
 ];
@@ -39,12 +40,12 @@ export function NavBar() {
           ))}
         </div>
         <span className="navbar-spacer" />
-        <span className="navbar-user" title={user.email}>
+        <Link to="/account" className="navbar-user" title={`${user.email} - account settings`}>
           <span className="avatar" aria-hidden="true">
             {displayName.charAt(0).toUpperCase()}
           </span>
           <span className="navbar-user-name">{displayName}</span>
-        </span>
+        </Link>
         <button type="button" className="btn-secondary btn-small" onClick={handleLogout}>
           Log out
         </button>

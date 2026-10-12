@@ -32,10 +32,12 @@ Tests run in jsdom with `fetch` mocked, so the backend doesn't need to be runnin
 src/
 ├── api/          fetch client + TypeScript types matching the backend schemas
 ├── context/       auth state (JWT in localStorage)
-├── components/     shared UI (nav bar, route guard, JDC guide, auth layout, logo, category icon)
-├── lib/            category icons/colors, date grouping helpers
-└── pages/            Login, Signup, Onboarding, Updates, Ask, Dashboard
-tests/            Vitest suite (API client, route guard, dashboard, update history/edit/delete, Ask, dates, no-emoji)
+├── components/     shared UI (nav bar, route guard, JDC guide, auth layout, logo, category icon,
+│                   load errors / error boundary / privacy note / Google button)
+├── lib/            category icons/colors, date grouping helpers, public app config
+└── pages/            Login, Signup, password reset, Google callback, Onboarding,
+                    Updates, Goals, Ask, Account, Dashboard
+tests/            Vitest suite (every page, API client, dates, no-emoji); helpers.ts mocks the API
 ```
 
 ## Conventions

@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session, selectinload
 
+from app.ai.providers.mock import CATEGORY_KEYWORDS
 from app.models.enums import Category
 from app.models.update import Update
 
@@ -131,16 +132,65 @@ def search_journal(
     if not query_tokens:
         return entries[:limit]
 
-    corpus = [tokenize(" ".join([e.content, *e.statements, *e.categories])) for e in entries]
+    corpus = [tokenize(" ".join([e.content, *e.statements])) for e in entries]
     scores = BM25Okapi(corpus).get_scores(query_tokens)
     # BM25's IDF goes to ~0 for words that appear in every entry of a tiny journal,
     # so also count plain term overlap; ties fall back to newest first (stable sort).
     overlap = [len(set(query_tokens) & set(doc)) for doc in corpus]
-    ranked = sorted(range(len(entries)), key=lambda i: (overlap[i], scores[i]), reverse=True)
-    matches = [entries[i] for i in ranked if overlap[i] > 0]
+    # Words match words, not meaning: "workout" alone would never find "Went to the
+    # gym". Bridge that through the life areas the AI already assigned to each entry:
+    # a query word belonging to an area also matches entries in that area, ranked
+    # after entries that contain the words themselves.
+    areas = related_areas(query)
+    area_overlap = [len(areas & set(e.categories)) for e in entries]
+    ranked = sorted(
+        range(len(entries)), key=lambda i: (overlap[i], area_overlap[i], scores[i]), reverse=True
+    )
+    matches = [entries[i] for i in ranked if overlap[i] > 0 or area_overlap[i] > 0]
     if not matches and (start_day or end_day or category):
         return entries[:limit]
     return matches[:limit]
+
+
+def related_areas(query: str) -> set[str]:
+    """Life areas a query is about, from the area names and their keyword lists
+    ("workout" -> health, "money" -> finance, "Ravi's party" -> lifestyle)."""
+    lower = query.lower()
+    words = _TOKEN_RE.findall(lower)
+    found = set()
+    for area, keywords in _AREA_WORDS.items():
+        for keyword in keywords:
+            if " " in keyword:
+                hit = keyword in lower
+            elif keyword.endswith("*"):
+                hit = any(w.startswith(keyword[:-1]) for w in words)
+            else:
+                hit = keyword in words
+            if hit:
+                found.add(area)
+                break
+    return found
+
+
+def _build_area_words() -> dict[str, list[str]]:
+    words = {area: [*keywords, *area.split("_")] for area, keywords in CATEGORY_KEYWORDS.items()}
+    words["personal_growth"] = [w for w in words["personal_growth"] if w != "personal"]
+    for area, extra in _EXTRA_AREA_WORDS.items():
+        words[area] = [*words[area], *extra]
+    return words
+
+
+# Everyday words people use in questions, beyond the extraction keywords.
+_EXTRA_AREA_WORDS = {
+    "health": ["fitness", "training", "trained", "diet", "weight", "steps"],
+    "career": ["office", "boss", "colleague*", "task*", "meeting*"],
+    "finance": ["money", "spending", "finances", "cost*", "purchase*", "rupees", "dollars", "savings"],
+    "relationships": ["social", "people", "wife", "husband", "girlfriend", "boyfriend", "parents"],
+    "learning": ["lesson*", "practice", "practise", "skill*"],
+    "personal_growth": ["mood", "mind*", "habit*", "gratitude", "growth"],
+    "lifestyle": ["weekend", "game*", "music", "fun"],
+}
+_AREA_WORDS = _build_area_words()
 
 
 def _parse_category(value: str | None) -> str | None:

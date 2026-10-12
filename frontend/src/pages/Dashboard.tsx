@@ -12,10 +12,11 @@ import {
 } from "lucide-react";
 import { type CSSProperties, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import type { CategoryOption, Dashboard as DashboardData } from "../api/types";
 import { AboutJdc } from "../components/AboutJdc";
 import { CategoryIcon } from "../components/CategoryIcon";
+import { LoadError } from "../components/Feedback";
 import { categoryMeta } from "../lib/categories";
 
 const TREND_ICON: Record<string, LucideIcon> = {
@@ -90,23 +91,40 @@ export function Dashboard() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Bumping `attempt` (the Try again button) re-runs the load.
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
     async function load() {
-      const [dashboard, cats] = await Promise.all([
-        api.get<DashboardData>("/dashboard"),
-        api.get<CategoryOption[]>("/categories"),
-      ]);
-      setData(dashboard);
-      setCategories(cats);
-      setLoading(false);
+      try {
+        const [dashboard, cats] = await Promise.all([
+          api.get<DashboardData>("/dashboard"),
+          api.get<CategoryOption[]>("/categories"),
+        ]);
+        setData(dashboard);
+        setCategories(cats);
+      } catch (err) {
+        setLoadError(err instanceof ApiError ? err.message : "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
-  }, []);
+  }, [attempt]);
+
+  function retry() {
+    setLoading(true);
+    setLoadError(null);
+    setAttempt((n) => n + 1);
+  }
 
   function labelFor(value: string): string {
     return categories.find((c) => c.value === value)?.label ?? categoryMeta(value).label;
   }
 
+  if (loadError) return <LoadError message={loadError} onRetry={retry} />;
   if (loading || !data) return <div className="page-center">Loading...</div>;
 
   // With no events every score is just the neutral baseline of 50, which

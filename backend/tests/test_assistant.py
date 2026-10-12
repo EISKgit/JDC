@@ -107,7 +107,10 @@ def test_deleted_and_edited_entries_are_reflected_immediately(client, journal):
     client.delete(f"/api/v1/updates/{journal['gym']['id']}", headers=headers)
     client.patch(f"/api/v1/updates/{journal['food']['id']}", headers=headers, json={"content": "Went jogging"})
     with SessionLocal() as db:
-        assert search_journal(db, journal["user_id"], "gym") == []
+        all_ids = [h.update_id for h in search_journal(db, journal["user_id"], "", start_day=date(2000, 1, 1))]
+        assert journal["gym"]["id"] not in all_ids  # the deleted entry is gone everywhere
+        # "gym" now only finds the edited jogging entry (same Health area), not the deleted one
+        assert [h.update_id for h in search_journal(db, journal["user_id"], "gym")] == [journal["food"]["id"]]
         assert search_journal(db, journal["user_id"], "groceries") == []
         assert [h.update_id for h in search_journal(db, journal["user_id"], "jogging")] == [journal["food"]["id"]]
 

@@ -19,6 +19,8 @@ export interface User {
   email: string;
   full_name: string | null;
   created_at: string;
+  /** False for accounts that only ever signed in with Google. */
+  has_password: boolean;
 }
 
 export interface Token {
@@ -129,4 +131,10 @@ export interface DaySummary {
   summary: string;
   entry_count: number;
   used_ai: boolean;
+}
+
+export interface PublicConfig {
+  google_sign_in: boolean;
+  /** Whether journal text is sent to an outside AI service, and which one. */
+  ai: { external: boolean; vendor: string | null };
 }

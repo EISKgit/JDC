@@ -30,3 +30,7 @@ class User(Base):
     updates: Mapped[list["Update"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"
     )
+
+    @property
+    def has_password(self) -> bool:
+        return self.hashed_password is not None

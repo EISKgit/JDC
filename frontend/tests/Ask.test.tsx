@@ -29,7 +29,10 @@ type Body = { question: string; history: { role: string; content: string }[]; tz
 
 function mockAsk(replies: (AskResponse | number)[]) {
   const bodies: Body[] = [];
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    if (String(input).endsWith("/config")) {
+      return new Response(JSON.stringify({ google_sign_in: false, ai: { external: true, vendor: "Groq" } }));
+    }
     bodies.push(JSON.parse(String(init?.body)));
     const reply = replies[bodies.length - 1];
     if (typeof reply === "number") {

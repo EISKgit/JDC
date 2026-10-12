@@ -1,7 +1,8 @@
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ApiError } from "../api/client";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ApiError, takeSessionExpired } from "../api/client";
 import { AuthLayout } from "../components/AuthLayout";
+import { GoogleButton } from "../components/Feedback";
 import { useAuth } from "../context/AuthContext";
 
 export function Login() {
@@ -9,7 +10,12 @@ export function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  // An error passed from Google sign-in (/auth/callback), or a note that the session expired.
+  const [error, setError] = useState<string | null>(
+    () => (location.state as { error?: string } | null)?.error ?? null,
+  );
+  const [expired] = useState(takeSessionExpired);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -31,12 +37,19 @@ export function Login() {
       <form className="auth-card" onSubmit={handleSubmit}>
         <h2>Welcome back</h2>
         <p className="auth-subtitle">Log in to see how your week is going.</p>
+        {expired && !error && <p className="form-notice">Your session expired. Please log in again.</p>}
+        <GoogleButton />
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
         <label>
-          Password
+          <span className="label-row">
+            Password
+            <Link to="/forgot-password" className="label-link">
+              Forgot password?
+            </Link>
+          </span>
           <input
             type="password"
             value={password}

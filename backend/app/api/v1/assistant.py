@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.ai import assistant
+from app.core.rate_limit import limit_by_user
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.update import Update
 from app.models.user import User
 from app.schemas.assistant import AskRequest, AskResponse, DaySummaryRequest, DaySummaryResponse
 
-router = APIRouter(prefix="/assistant", tags=["assistant"])
+router = APIRouter(prefix="/assistant", tags=["assistant"], dependencies=[Depends(limit_by_user("ai"))])
 
 
 @router.post("/ask", response_model=AskResponse)

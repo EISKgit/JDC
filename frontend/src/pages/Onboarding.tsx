@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import type { Category, CategoryOption, LifeProfile } from "../api/types";
 import { CategoryIcon } from "../components/CategoryIcon";
+import { LoadError, PrivacyNote } from "../components/Feedback";
 
 export function Onboarding() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -13,24 +14,41 @@ export function Onboarding() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Bumping `attempt` (the Try again button) re-runs the load.
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
     async function load() {
-      const [cats, profile] = await Promise.all([
-        api.get<CategoryOption[]>("/categories"),
-        api.get<LifeProfile | null>("/onboarding"),
-      ]);
-      setCategories(cats);
-      if (profile) {
-        setAbout(profile.about ?? "");
-        setGoalsText(profile.goals_text ?? "");
-        setChallenges(profile.challenges ?? "");
-        setFocusCategories(profile.focus_categories);
-        setAiSummary(profile.ai_summary);
+      try {
+        const [cats, profile] = await Promise.all([
+          api.get<CategoryOption[]>("/categories"),
+          api.get<LifeProfile | null>("/onboarding"),
+        ]);
+        setCategories(cats);
+        if (profile) {
+          setAbout(profile.about ?? "");
+          setGoalsText(profile.goals_text ?? "");
+          setChallenges(profile.challenges ?? "");
+          setFocusCategories(profile.focus_categories);
+          setAiSummary(profile.ai_summary);
+        }
+      } catch (err) {
+        setLoadError(err instanceof ApiError ? err.message : "Something went wrong");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     load();
-  }, []);
+  }, [attempt]);
+
+  function retry() {
+    setLoading(true);
+    setLoadError(null);
+    setAttempt((n) => n + 1);
+  }
 
   function toggleCategory(value: Category) {
     setFocusCategories((prev) =>
@@ -41,6 +59,7 @@ export function Onboarding() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setSaveError(null);
     try {
       const profile = await api.put<LifeProfile>("/onboarding", {
         about: about || null,
@@ -49,11 +68,14 @@ export function Onboarding() {
         focus_categories: focusCategories,
       });
       setAiSummary(profile.ai_summary);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Could not save your Life Profile");
     } finally {
       setSaving(false);
     }
   }
 
+  if (loadError) return <LoadError message={loadError} onRetry={retry} />;
   if (loading) return <div className="page-center">Loading...</div>;
 
   return (
@@ -66,6 +88,7 @@ export function Onboarding() {
           count 1.5× in your overall score.
         </p>
       </header>
+      <PrivacyNote />
 
       <form className="card form-stack" onSubmit={handleSubmit}>
         <label>
@@ -103,6 +126,7 @@ export function Onboarding() {
           <textarea rows={2} value={challenges} onChange={(e) => setChallenges(e.target.value)} />
         </label>
 
+        {saveError && <p className="form-error">{saveError}</p>}
         <button type="submit" className="btn-primary" disabled={saving}>
           {saving ? "Saving..." : "Save Life Profile"}
         </button>

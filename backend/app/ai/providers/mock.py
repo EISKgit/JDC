@@ -25,6 +25,10 @@ _CATEGORY_RULES: list[tuple[Category, list[str], str]] = [
      "general_activity"),
 ]
 
+# Public view of the keyword lists (category value -> keywords), also used by
+# journal search to connect a word like "workout" to the Health area.
+CATEGORY_KEYWORDS: dict[str, list[str]] = {cat.value: keywords for cat, keywords, _ in _CATEGORY_RULES}
+
 # "Spent 2 hours studying" is about time, not money — these verbs only count as
 # finance when the sentence isn't describing a duration.
 _AMBIGUOUS_MONEY_WORDS = {"spent", "spend*", "paid", "saved", "bought", "buy*"}

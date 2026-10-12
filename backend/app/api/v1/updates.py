@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.ai.factory import get_ai_provider
 from app.ai.providers.base import AIProvider, AIProviderError
+from app.core.rate_limit import limit_by_user
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.update import Update
@@ -16,8 +17,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/updates", tags=["updates"])
 
+# Creating and editing call the AI to extract events.
+ai_rate_limit = Depends(limit_by_user("ai"))
 
-@router.post("", response_model=UpdateOut, status_code=status.HTTP_201_CREATED)
+
+@router.post("", response_model=UpdateOut, status_code=status.HTTP_201_CREATED, dependencies=[ai_rate_limit])
 def create_update(
     payload: UpdateCreate,
     current_user: User = Depends(get_current_user),
@@ -40,7 +44,7 @@ def create_update(
     return update
 
 
-@router.patch("/{update_id}", response_model=UpdateOut)
+@router.patch("/{update_id}", response_model=UpdateOut, dependencies=[ai_rate_limit])
 def edit_update(
     update_id: int,
     payload: UpdateCreate,

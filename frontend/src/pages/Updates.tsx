@@ -3,6 +3,7 @@ import { type CSSProperties, type FormEvent, type KeyboardEvent, useEffect, useM
 import { useSearchParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type { Category, CategoryOption, DaySummary, EventItem, UpdateItem } from "../api/types";
+import { LoadError } from "../components/Feedback";
 import { categoryMeta } from "../lib/categories";
 import {
   currentStreak,
@@ -362,18 +363,34 @@ export function Updates() {
     return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
   });
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Bumping `attempt` (the Try again button) re-runs the load.
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
     async function load() {
-      const [cats, list] = await Promise.all([
-        api.get<CategoryOption[]>("/categories"),
-        api.get<UpdateItem[]>("/updates"),
-      ]);
-      setCategories(cats);
-      setUpdates(list);
-      setLoading(false);
+      try {
+        const [cats, list] = await Promise.all([
+          api.get<CategoryOption[]>("/categories"),
+          api.get<UpdateItem[]>("/updates"),
+        ]);
+        setCategories(cats);
+        setUpdates(list);
+      } catch (err) {
+        setLoadError(err instanceof ApiError ? err.message : "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
-  }, []);
+  }, [attempt]);
+
+  function retry() {
+    setLoading(true);
+    setLoadError(null);
+    setAttempt((n) => n + 1);
+  }
 
   const days = useMemo(() => groupByDay(updates), [updates]);
   const streak = useMemo(() => currentStreak(days.map((d) => d.key)), [days]);
@@ -412,6 +429,8 @@ export function Updates() {
   function removeUpdate(id: number) {
     setUpdates((prev) => prev.filter((u) => u.id !== id));
   }
+
+  if (loadError) return <LoadError message={loadError} onRetry={retry} />;
 
   return (
     <div className="page">
