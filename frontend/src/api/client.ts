@@ -43,6 +43,26 @@ function endExpiredSession(): void {
   window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
 }
 
+interface ValidationIssue {
+  loc?: (string | number)[];
+  msg?: string;
+}
+
+/** FastAPI errors: a string, or (422) a list of field problems. Make either readable. */
+function describeDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    return (detail as ValidationIssue[])
+      .map((issue) => {
+        const field = issue.loc?.[issue.loc.length - 1];
+        const msg = (issue.msg ?? "is invalid").replace(/^Value error, /, "");
+        return typeof field === "string" && field !== "body" ? `${field.replaceAll("_", " ")}: ${msg}` : msg;
+      })
+      .join("; ");
+  }
+  return JSON.stringify(detail);
+}
+
 async function send(path: string, options: RequestInit = {}): Promise<Response> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -62,7 +82,7 @@ async function send(path: string, options: RequestInit = {}): Promise<Response> 
     let detail = response.statusText;
     try {
       const body = await response.json();
-      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      detail = describeDetail(body.detail);
     } catch {
       // response had no JSON body — fall back to statusText
     }

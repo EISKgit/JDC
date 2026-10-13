@@ -23,6 +23,9 @@ jobs:
       - run: pip install -r requirements-dev.txt
       # Tests use a throwaway SQLite DB and the rule-based AI: no secrets or network needed.
       - run: python -m pytest -q
+      # Fails if any pinned dependency has a published security advisory.
+      - name: Audit Python dependencies for known vulnerabilities
+        run: pip-audit -r requirements.txt --progress-spinner off
 
   frontend:
     runs-on: ubuntu-latest
@@ -37,6 +40,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - name: Audit npm dependencies for known vulnerabilities
+        run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm test
       - run: npm run build

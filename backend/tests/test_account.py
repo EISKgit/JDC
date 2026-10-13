@@ -144,12 +144,15 @@ def test_public_config_without_login(client, monkeypatch):
 
 def test_login_attempts_are_rate_limited_per_ip(client):
     register(client)
-    wrong = {"email": "acct@example.com", "password": "guess-guess"}
-    statuses = [client.post(f"{API}/auth/login", json=wrong).status_code for _ in range(12)]
+    # Different emails each time, so this exercises the per-IP limit, not the per-account lockout.
+    statuses = [
+        client.post(f"{API}/auth/login", json={"email": f"guess{i}@example.com", "password": "guess-guess"}).status_code
+        for i in range(12)
+    ]
     # register used 1 of the 10/minute auth requests; 9 more are allowed, then 429.
     assert statuses[:9] == [401] * 9
     assert set(statuses[9:]) == {429}
-    blocked = client.post(f"{API}/auth/login", json=wrong)
+    blocked = client.post(f"{API}/auth/login", json={"email": "x@example.com", "password": "guess-guess"})
     assert blocked.status_code == 429 and int(blocked.headers["retry-after"]) > 0
 
 

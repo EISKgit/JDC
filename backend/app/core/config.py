@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     # Rate limits (requests per minute). Auth limits are per client IP, AI limits per user.
     rate_limit_auth_per_minute: int = 10
     rate_limit_ai_per_minute: int = 20
+    # Per-account lockout: after this many wrong passwords for one email (from any IP),
+    # that account's password login pauses for the lockout window.
+    login_max_failures: int = 5
+    login_lockout_minutes: int = 15
+
+    # Largest request body accepted, in bytes (JSON API: 1 MB is plenty).
+    max_request_bytes: int = 1_000_000
 
     @property
     def is_development(self) -> bool:

@@ -1,3 +1,4 @@
+m 
 
 # JDC — Just a Daily Companion
 
@@ -24,6 +25,7 @@ insights, trends, scores, recommendations, and short-term forecasts.
 - [API reference](#api-reference)
 - [Configuration reference](#configuration-reference)
 - [Test](#test)
+- [Security](#security)
 - [Roadmap](#roadmap)
 - [License](#license)
 
@@ -208,13 +210,16 @@ ILC/
 │   │   ├── test_assistant.py                Ask JDC: retrieval, LangGraph agent, day summary
 │   │   ├── test_account.py                  passwords, reset links, export/delete, Google, rate limits
 │   │   ├── test_migrations_and_config.py    migrations match models; SECRET_KEY guard
+│   │   ├── test_security.py                 headers, size limits, lockout, password rules, logout-all
 │   │   └── test_timestamps.py             API timestamps carry an explicit UTC offset
 │   └── app/
 │       ├── main.py               creates the FastAPI app, CORS, runs migrations on startup
 │       ├── core/
 │       │   ├── config.py           typed settings, read from .env; SECRET_KEY safety check
 │       │   ├── security.py         bcrypt + signed tokens (login, reset links, Google state)
-│       │   └── rate_limit.py         per-IP / per-user request limits (429)
+│       │   ├── rate_limit.py         per-IP / per-user limits (429) + per-account login lockout
+│       │   ├── passwords.py            password strength rules
+│       │   └── middleware.py           security headers + request size limit
 │       ├── db/
 │       │   ├── base.py               SQLAlchemy declarative Base
 │       │   ├── session.py            DB engine/connection + per-request session
@@ -339,8 +344,7 @@ copy .env.example .env      # Windows — optional, defaults already work
 ```
 
 The database (`backend/ilc.db`, SQLite) is created automatically the first time the
-server starts, and **migrations run automatically on every start** (Alembic `upgrade
-head`), so pulling a change that alters the schema needs no manual step. A database
+server starts, and **migrations run automatically on every start** (Alembic `upgrade head`), so pulling a change that alters the schema needs no manual step. A database
 from before migrations existed is detected and adopted with its data.
 
 For anything other than local use, set `ENVIRONMENT=production` and a long random
@@ -447,8 +451,8 @@ A full walkthrough of the product loop, using either the UI at
    all your data as JSON, or permanently delete your account. Changing the password
    signs you out on other devices.
 10. Keep logging updates over multiple days — scores, trends, and forecasts become
-   more meaningful as more evidence accumulates (a single day of data will
-   correctly show "not enough data" for most trends, by design).
+    more meaningful as more evidence accumulates (a single day of data will
+    correctly show "not enough data" for most trends, by design).
 
 > **Mock provider note:** the default `AI_PROVIDER=mock` classifies each sentence
 > by whole-word keywords (so *"run,"*, *"studied"* and *"walking"* are recognised,
@@ -469,65 +473,67 @@ Rate limits: login, sign-up and password-reset requests are limited per IP addre
 and AI-backed requests (posting/editing updates, Ask JDC, day summaries) per user.
 Over the limit, the API returns **429** with a `Retry-After` header.
 
-| Method | Path                                    | Purpose                                                 |
-| ------ | --------------------------------------- | ------------------------------------------------------- |
-| POST   | `/auth/register`                      | Create an account, returns a JWT                        |
-| POST   | `/auth/login`                         | Log in, returns a JWT                                   |
-| GET    | `/auth/me`                            | Current user                                            |
-| POST   | `/auth/change-password`               | Change (or first set) the password; signs out other sessions |
+| Method | Path                                    | Purpose                                                         |
+| ------ | --------------------------------------- | --------------------------------------------------------------- |
+| POST   | `/auth/register`                      | Create an account, returns a JWT                                |
+| POST   | `/auth/login`                         | Log in, returns a JWT                                           |
+| GET    | `/auth/me`                            | Current user                                                    |
+| POST   | `/auth/change-password`               | Change (or first set) the password; signs out other sessions    |
 | POST   | `/auth/forgot-password`               | Email a reset link (same reply whether or not the email exists) |
-| POST   | `/auth/reset-password`                | Set a new password from a reset link (single use)       |
-| GET    | `/auth/me/export`                     | Download all your data as JSON                          |
-| DELETE | `/auth/me`                            | Delete the account and all its data                     |
-| GET    | `/auth/google/login`                  | Redirect to Google sign-in (if configured)              |
-| GET    | `/auth/google/callback`               | Google returns here; redirects to the app with a token  |
-| GET    | `/config` *(no login needed)*         | Public settings: Google sign-in on? outside AI used?    |
-| GET    | `/categories`                         | The 7 fixed life categories                             |
-| GET    | `/onboarding`                         | Current user's Life Profile (or`null`)                |
-| PUT    | `/onboarding`                         | Create/update the Life Profile (regenerates AI summary) |
-| POST   | `/goals`                              | Create a goal                                           |
-| GET    | `/goals`                              | List goals                                              |
-| PATCH  | `/goals/{id}`                         | Update a goal                                           |
-| DELETE | `/goals/{id}`                         | Delete a goal                                           |
-| POST   | `/updates`                            | Create an update (triggers AI event extraction)         |
-| GET    | `/updates`                            | List updates (with their events)                        |
-| GET    | `/updates/{id}`                       | One update, with its events                             |
-| PATCH  | `/updates/{id}`                       | Edit an update's text (re-extracts its events)          |
-| DELETE | `/updates/{id}`                       | Delete an update and all its events                     |
-| PATCH  | `/events/{id}`                        | Correct an event's category/type/description/sentiment  |
-| DELETE | `/events/{id}`                        | Remove an incorrect event                               |
-| GET    | `/intelligence/daily`                 | 1-day summary: scores, evidence, warnings, narrative    |
-| GET    | `/intelligence/weekly`                | 7-day summary                                           |
-| GET    | `/intelligence/monthly`               | 30-day summary                                          |
-| GET    | `/intelligence/forecast?horizon=7\|30` | Per-category forecast                                   |
-| GET    | `/dashboard`                          | Trimmed "3-5 things that matter" view                   |
-| POST   | `/assistant/ask`                      | Ask JDC: answer from your entries, with sources         |
-| POST   | `/assistant/day-summary`              | AI summary of one local day                             |
-| GET    | `/health` *(not under /api/v1)*     | Liveness check                                          |
+| POST   | `/auth/reset-password`                | Set a new password from a reset link (single use)               |
+| GET    | `/auth/me/export`                     | Download all your data as JSON                                  |
+| DELETE | `/auth/me`                            | Delete the account and all its data                             |
+| GET    | `/auth/google/login`                  | Redirect to Google sign-in (if configured)                      |
+| GET    | `/auth/google/callback`               | Google returns here; redirects to the app with a token          |
+| GET    | `/config` *(no login needed)*       | Public settings: Google sign-in on? outside AI used?            |
+| GET    | `/categories`                         | The 7 fixed life categories                                     |
+| GET    | `/onboarding`                         | Current user's Life Profile (or`null`)                        |
+| PUT    | `/onboarding`                         | Create/update the Life Profile (regenerates AI summary)         |
+| POST   | `/goals`                              | Create a goal                                                   |
+| GET    | `/goals`                              | List goals                                                      |
+| PATCH  | `/goals/{id}`                         | Update a goal                                                   |
+| DELETE | `/goals/{id}`                         | Delete a goal                                                   |
+| POST   | `/updates`                            | Create an update (triggers AI event extraction)                 |
+| GET    | `/updates`                            | List updates (with their events)                                |
+| GET    | `/updates/{id}`                       | One update, with its events                                     |
+| PATCH  | `/updates/{id}`                       | Edit an update's text (re-extracts its events)                  |
+| DELETE | `/updates/{id}`                       | Delete an update and all its events                             |
+| PATCH  | `/events/{id}`                        | Correct an event's category/type/description/sentiment          |
+| DELETE | `/events/{id}`                        | Remove an incorrect event                                       |
+| GET    | `/intelligence/daily`                 | 1-day summary: scores, evidence, warnings, narrative            |
+| GET    | `/intelligence/weekly`                | 7-day summary                                                   |
+| GET    | `/intelligence/monthly`               | 30-day summary                                                  |
+| GET    | `/intelligence/forecast?horizon=7\|30` | Per-category forecast                                           |
+| GET    | `/dashboard`                          | Trimmed "3-5 things that matter" view                           |
+| POST   | `/assistant/ask`                      | Ask JDC: answer from your entries, with sources                 |
+| POST   | `/assistant/day-summary`              | AI summary of one local day                                     |
+| GET    | `/health` *(not under /api/v1)*     | Liveness check                                                  |
 
 ## Configuration reference
 
 ### Backend (`backend/.env`, copy from `.env.example`)
 
-| Variable                                        | Default                                               | Notes                                                              |
-| ----------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`                                | `sqlite:///./ilc.db`                                | Point at a Postgres URL later — no code changes needed            |
-| `ENVIRONMENT`                                 | `development`                                       | Anything else (e.g. `production`) refuses a weak `SECRET_KEY`     |
-| `SECRET_KEY`                                  | `dev-only-secret-change-me`                         | Signs login tokens. Public default: set a long random one          |
-| `FRONTEND_URL`                                | `http://localhost:5173`                             | Where Google sign-in and reset emails send people back to          |
-| `ACCESS_TOKEN_EXPIRE_MINUTES`                 | `10080` (7 days)                                    | JWT lifetime                                                       |
-| `CORS_ORIGINS`                                | `http://localhost:5173`                             | Comma-separated list of allowed browser origins                    |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | *(blank)*                                           | Leave blank to disable Google sign-in (returns 501, doesn't crash) |
-| `GOOGLE_REDIRECT_URI`                         | `http://localhost:8000/api/v1/auth/google/callback` | Must match the Google Cloud Console OAuth client config            |
-| `AI_PROVIDER`                                 | `mock`                                              | `mock` (no key needed), `groq` or `openai`                   |
-| `GROQ_API_KEY`                                | *(blank)*                                           | Required only if`AI_PROVIDER=groq`                               |
-| `GROQ_MODEL`                                  | `openai/gpt-oss-120b`                               | Any Groq chat model that supports JSON mode                        |
-| `OPENAI_API_KEY`                              | *(blank)*                                           | Required only if`AI_PROVIDER=openai`                             |
-| `OPENAI_MODEL`                                | `gpt-4o-mini`                                       | Any OpenAI chat-completions-compatible model                       |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | *(blank)* / `587` | Email for reset links; blank = link printed in the backend log |
-| `PASSWORD_RESET_EXPIRE_MINUTES`               | `30`                                                | How long a reset link works                                        |
-| `RATE_LIMIT_AUTH_PER_MINUTE`                  | `10`                                                | Login / sign-up / reset requests per IP                            |
-| `RATE_LIMIT_AI_PER_MINUTE`                    | `20`                                                | AI-backed requests per user                                        |
+| Variable                                                                          | Default                                               | Notes                                                              |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`                                                                  | `sqlite:///./ilc.db`                                | Point at a Postgres URL later — no code changes needed            |
+| `ENVIRONMENT`                                                                   | `development`                                       | Anything else (e.g.`production`) refuses a weak `SECRET_KEY`   |
+| `SECRET_KEY`                                                                    | `dev-only-secret-change-me`                         | Signs login tokens. Public default: set a long random one          |
+| `FRONTEND_URL`                                                                  | `http://localhost:5173`                             | Where Google sign-in and reset emails send people back to          |
+| `ACCESS_TOKEN_EXPIRE_MINUTES`                                                   | `10080` (7 days)                                    | JWT lifetime                                                       |
+| `CORS_ORIGINS`                                                                  | `http://localhost:5173`                             | Comma-separated list of allowed browser origins                    |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                   | *(blank)*                                           | Leave blank to disable Google sign-in (returns 501, doesn't crash) |
+| `GOOGLE_REDIRECT_URI`                                                           | `http://localhost:8000/api/v1/auth/google/callback` | Must match the Google Cloud Console OAuth client config            |
+| `AI_PROVIDER`                                                                   | `mock`                                              | `mock` (no key needed), `groq` or `openai`                   |
+| `GROQ_API_KEY`                                                                  | *(blank)*                                           | Required only if`AI_PROVIDER=groq`                               |
+| `GROQ_MODEL`                                                                    | `openai/gpt-oss-120b`                               | Any Groq chat model that supports JSON mode                        |
+| `OPENAI_API_KEY`                                                                | *(blank)*                                           | Required only if`AI_PROVIDER=openai`                             |
+| `OPENAI_MODEL`                                                                  | `gpt-4o-mini`                                       | Any OpenAI chat-completions-compatible model                       |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | *(blank)* / `587`                                 | Email for reset links; blank = link printed in the backend log     |
+| `PASSWORD_RESET_EXPIRE_MINUTES`                                                 | `30`                                                | How long a reset link works                                        |
+| `RATE_LIMIT_AUTH_PER_MINUTE`                                                    | `10`                                                | Login / sign-up / reset requests per IP                            |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES` | `5` / `15` | Wrong passwords per account before login pauses |
+| `MAX_REQUEST_BYTES` | `1000000` | Larger request bodies are refused with 413 |
+| `RATE_LIMIT_AI_PER_MINUTE`                                                      | `20`                                                | AI-backed requests per user                                        |
 
 ### Frontend (`frontend/.env.local`, copy from `.env.example`)
 
@@ -593,6 +599,61 @@ Results appear as a check mark or cross next to each commit on GitHub (the
 
 These tests don't drive a real browser; click through `npm run dev` →
 `http://localhost:5173` after visual changes.
+
+## Security
+
+What protects a JDC account and its data, and what to do when deploying.
+
+**Accounts and logins**
+- Passwords: bcrypt-hashed, 8–72 characters, and common passwords, passwords built
+  from the email address, or single repeated characters are refused.
+- Login: per-IP rate limit (10/min) **plus** a per-account lockout (5 wrong passwords
+  for one email, from any IP, pauses that account's password login for 15 minutes;
+  a password reset lifts it). Unknown emails take as long to fail as wrong passwords,
+  so response times don't reveal which emails are registered.
+- Tokens are signed JWTs that carry a fingerprint of the password and a per-account
+  version number: changing or resetting the password, or **Sign out of all other
+  devices** (Account page), invalidates every other session at once. Reset links
+  expire in 30 minutes and work once. Google sign-in uses a CSRF `state` cookie and
+  accepts verified Google emails only.
+- Password checks while signed in (change password, delete account) are rate-limited too.
+
+**Requests and responses**
+- Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: no-referrer`, a `Permissions-Policy`, and (API) a deny-all CSP and
+  `Cache-Control: no-store`; outside development also HSTS.
+- Request bodies over 1 MB are refused (413); text that goes to the AI is length-limited.
+- The interactive API docs (`/docs`, `/openapi.json`) exist only in development.
+- The production frontend build includes a Content-Security-Policy: only the app's own
+  scripts run, and the page can only talk to itself and the API. The login token sits in
+  `localStorage`, so this is the main defence against injected scripts stealing it.
+
+**Data and secrets**
+- Every API query is scoped to the signed-in user; Ask JDC's tools are read-only and
+  bound to that user. Export and permanent deletion are on the Account page.
+- `.env` is git-ignored; the repository history has been checked for leaked keys.
+  The server refuses to start outside development with the public default `SECRET_KEY`.
+- Reset links are written to the log only in development (when no SMTP is set up).
+- CI runs `pip-audit` and `npm audit` on every push, so a newly published
+  vulnerability in a dependency fails the build.
+
+**Deployment checklist**
+1. `ENVIRONMENT=production`, a long random `SECRET_KEY`, and real `SMTP_*` settings.
+2. Serve both the app and the API over **HTTPS** only.
+3. `CORS_ORIGINS` and `FRONTEND_URL` set to the real site address; build the frontend
+   with the real `VITE_API_BASE_URL` (it's also written into the CSP).
+4. Have the web server serving the frontend send `X-Frame-Options: DENY` and
+   `Content-Security-Policy: frame-ancestors 'none'` (a `<meta>` CSP can't block framing).
+5. Behind a reverse proxy, start uvicorn with `--proxy-headers --forwarded-allow-ips=<proxy IP>`
+   so rate limits see real client IPs instead of the proxy's.
+6. Rate limits are in memory per process: with several server processes, move them to
+   a shared store (e.g. Redis).
+
+**Known trade-offs**
+- Sign-up says "Email already registered", which reveals that an account exists; that's
+  the usual trade-off for a clear sign-up error.
+- The account lockout can be triggered by someone who knows your email (temporarily
+  blocking password login); it expires after 15 minutes and a reset link lifts it.
 
 ## Roadmap
 

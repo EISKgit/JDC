@@ -16,14 +16,14 @@ def _normalize_email(value: str) -> str:
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = NewPassword
-    full_name: str | None = None
+    full_name: str | None = Field(default=None, max_length=255)
 
     _normalize = field_validator("email", mode="before")(_normalize_email)
 
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=256)
 
     _normalize = field_validator("email", mode="before")(_normalize_email)
 

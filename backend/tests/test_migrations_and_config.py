@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
@@ -21,6 +22,17 @@ def fresh_engine():
     engine.dispose()
 
 
+def make_pre_migration_database(engine) -> None:
+    """A database as the app created it before migrations existed: exactly the
+    baseline schema, with no migration history table."""
+    config = Config(str(ALEMBIC_INI))
+    config.attributes["configure_logging"] = False
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, BASELINE_REVISION)
+        connection.exec_driver_sql("DROP TABLE alembic_version")
+
+
 def version(engine) -> str:
     with engine.connect() as c:
         return c.execute(text("select version_num from alembic_version")).scalar()
@@ -35,7 +47,7 @@ def test_migrations_match_the_models(fresh_engine):
 
 
 def test_database_from_before_migrations_is_adopted_with_its_data(fresh_engine):
-    Base.metadata.create_all(fresh_engine)  # what the old startup did
+    make_pre_migration_database(fresh_engine)
     with fresh_engine.begin() as c:
         c.execute(text("insert into users (email, created_at) values ('old@example.com', '2026-01-01')"))
 
@@ -48,8 +60,10 @@ def test_database_from_before_migrations_is_adopted_with_its_data(fresh_engine):
 
 
 def test_existing_database_ends_at_the_latest_migration(fresh_engine):
-    Base.metadata.create_all(fresh_engine)
+    make_pre_migration_database(fresh_engine)
     run_migrations(fresh_engine)
+    # later migrations were applied on top of the adopted baseline (e.g. users.token_version)
+    assert "token_version" in {c["name"] for c in inspect(fresh_engine).get_columns("users")}
     # Stamped at the baseline, then upgraded through any later migrations.
     head = ScriptDirectory.from_config(Config(str(ALEMBIC_INI))).get_current_head()
     assert version(fresh_engine) == head

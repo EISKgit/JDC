@@ -10,10 +10,12 @@ from sqlalchemy.orm import Session, selectinload
 from starlette.responses import RedirectResponse
 
 from app.core.config import get_settings
-from app.core.rate_limit import limit_by_ip
+from app.core.passwords import password_problem
+from app.core.rate_limit import limit_by_ip, limit_sensitive, limiter
 from app.core.security import (
     GOOGLE_STATE,
     PASSWORD_RESET,
+    burn_password_check,
     create_access_token,
     create_token,
     get_current_user,
@@ -49,6 +51,13 @@ GOOGLE_STATE_COOKIE = "jdc_google_state"
 GOOGLE_STATE_MINUTES = 10
 
 auth_rate_limit = Depends(limit_by_ip("auth"))
+sensitive_rate_limit = Depends(limit_sensitive("sensitive"))
+
+
+def _require_strong(password: str, email: str | None) -> None:
+    problem = password_problem(password, email)
+    if problem:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=problem)
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED, dependencies=[auth_rate_limit])
@@ -56,6 +65,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    _require_strong(payload.password, payload.email)
 
     user = User(
         email=payload.email,
@@ -70,9 +80,30 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
 
 @router.post("/login", response_model=Token, dependencies=[auth_rate_limit])
 def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
+    settings = get_settings()
+    # Per-account lockout on top of the per-IP limit: guessing one account's password
+    # from many IP addresses still stops after a few tries. Keyed by email whether or
+    # not the account exists, so the lockout itself doesn't reveal which emails exist.
+    failures_key = f"login-failures:{payload.email}"
+    window = settings.login_lockout_minutes * 60
+    limiter.ensure_below(
+        failures_key,
+        settings.login_max_failures,
+        window,
+        detail="Too many failed login attempts for this account. Please try again in {wait}, "
+        "or reset your password.",
+    )
+
     user = db.query(User).filter(User.email == payload.email).first()
-    if not user or not user.hashed_password or not verify_password(payload.password, user.hashed_password):
+    if user and user.hashed_password:
+        valid = verify_password(payload.password, user.hashed_password)
+    else:
+        burn_password_check(payload.password)  # same response time as a wrong password
+        valid = False
+    if not valid:
+        limiter.record(failures_key)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+    limiter.clear(failures_key)
     return Token(access_token=create_access_token(user))
 
 
@@ -84,7 +115,7 @@ def read_me(current_user: User = Depends(get_current_user)) -> User:
 # ---------------------------------------------------------------- passwords
 
 
-@router.post("/change-password", response_model=Token)
+@router.post("/change-password", response_model=Token, dependencies=[sensitive_rate_limit])
 def change_password(
     payload: ChangePassword,
     current_user: User = Depends(get_current_user),
@@ -96,6 +127,7 @@ def change_password(
         payload.current_password and verify_password(payload.current_password, current_user.hashed_password)
     ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    _require_strong(payload.new_password, current_user.email)
     current_user.hashed_password = hash_password(payload.new_password)
     db.commit()
     return Token(access_token=create_access_token(current_user))
@@ -130,9 +162,20 @@ def reset_password(payload: ResetPassword, db: Session = Depends(get_db)) -> Tok
     # changes any other way) it stops working.
     if user is None or claims.get("pv") != password_fingerprint(user):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="This reset link has already been used")
+    _require_strong(payload.new_password, user.email)
     user.hashed_password = hash_password(payload.new_password)
+    limiter.clear(f"login-failures:{user.email}")  # a successful reset lifts a lockout
     db.commit()
     return Token(access_token=create_access_token(user))
+
+
+@router.post("/logout-all", response_model=Token)
+def logout_everywhere_else(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Token:
+    """Sign out every other device (e.g. after losing a phone): all existing tokens
+    stop working. Returns a fresh token so this session stays signed in."""
+    current_user.token_version += 1
+    db.commit()
+    return Token(access_token=create_access_token(current_user))
 
 
 # ---------------------------------------------------------------- your data
@@ -162,7 +205,7 @@ def export_my_data(current_user: User = Depends(get_current_user), db: Session =
     )
 
 
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, dependencies=[sensitive_rate_limit])
 def delete_my_account(
     payload: DeleteAccount,
     current_user: User = Depends(get_current_user),

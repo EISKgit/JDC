@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.enums import Category, Sentiment
 from app.schemas.common import UTCDateTime
@@ -25,6 +25,6 @@ class EventCorrection(BaseModel):
     """Manual correction of an AI-extracted event. Any field left out is unchanged."""
 
     category: Category | None = None
-    type: str | None = None
-    description: str | None = None
+    type: str | None = Field(default=None, min_length=1, max_length=64)
+    description: str | None = Field(default=None, min_length=1, max_length=2000)
     sentiment: Sentiment | None = None

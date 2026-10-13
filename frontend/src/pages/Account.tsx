@@ -1,4 +1,4 @@
-import { Download, KeyRound, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { Download, KeyRound, LogOut, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api, downloadFile } from "../api/client";
@@ -64,13 +64,50 @@ function ChangePassword() {
           maxLength={72}
           required
         />
-        <span className="field-hint">8–72 characters</span>
+        <span className="field-hint">8–72 characters, not a common password</span>
       </label>
       {message && <p className={message.ok ? "form-success" : "form-error"}>{message.text}</p>}
       <button type="submit" className="btn-primary" disabled={saving}>
         {saving ? "Saving..." : "Save password"}
       </button>
     </form>
+  );
+}
+
+function SignOutEverywhere() {
+  const { loginWithToken } = useAuth();
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleClick() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await api.post<Token>("/auth/logout-all");
+      await loginWithToken(result.access_token); // keep this device signed in
+      setMessage({ ok: true, text: "Done. Every other device has been signed out." });
+    } catch (err) {
+      setMessage({ ok: false, text: errorText(err, "Could not sign out other devices") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2 className="card-heading">
+        <LogOut size={18} aria-hidden="true" />
+        Devices
+      </h2>
+      <p className="hint">
+        Lost a phone or used a shared computer? This signs out everywhere except here. Changing your password does
+        the same.
+      </p>
+      {message && <p className={message.ok ? "form-success" : "form-error"}>{message.text}</p>}
+      <button type="button" className="btn-secondary" onClick={handleClick} disabled={busy}>
+        {busy ? "Signing out..." : "Sign out of all other devices"}
+      </button>
+    </section>
   );
 }
 
@@ -175,6 +212,8 @@ export function Account() {
       </section>
 
       <ChangePassword />
+
+      <SignOutEverywhere />
 
       <section className="card">
         <h2 className="card-heading">

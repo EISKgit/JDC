@@ -109,7 +109,7 @@ export function ResetPassword() {
                 maxLength={72}
                 required
               />
-              <span className="field-hint">8–72 characters</span>
+              <span className="field-hint">8–72 characters, not a common password</span>
             </label>
             <label>
               Confirm new password

@@ -12,7 +12,13 @@ def send_email(to: str, subject: str, body: str) -> bool:
     is written to the server log instead (local development). Returns True if sent."""
     settings = get_settings()
     if not settings.smtp_host:
-        logger.warning("SMTP not configured, email not sent. To: %s | Subject: %s\n%s", to, subject, body)
+        if settings.is_development:
+            # Local use: print the message (e.g. a reset link) so it can still be used.
+            logger.warning("SMTP not configured, email not sent. To: %s | Subject: %s\n%s", to, subject, body)
+        else:
+            # Never write reset links to production logs: anyone who can read the logs
+            # could use them to take over accounts.
+            logger.error("SMTP not configured, could not send %r to %s", subject, to)
         return False
 
     message = EmailMessage()

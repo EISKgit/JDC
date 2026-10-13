@@ -55,10 +55,20 @@ describe("api requests", () => {
     expect((error as ApiError).message).toBe("Email already registered");
   });
 
-  it("stringifies non-string detail (e.g. 422 validation errors)", async () => {
-    const detail = [{ loc: ["body", "password"], msg: "too short" }];
+  it("turns 422 validation errors into readable text", async () => {
+    const detail = [
+      { loc: ["body", "new_password"], msg: "String should have at least 8 characters" },
+      { loc: ["body"], msg: "Value error, Passwords don't match" },
+    ];
     mockFetch(422, { detail });
-    await expect(api.post("/auth/register", {})).rejects.toThrow(JSON.stringify(detail));
+    await expect(api.post("/auth/register", {})).rejects.toThrow(
+      "new password: String should have at least 8 characters; Passwords don't match",
+    );
+  });
+
+  it("stringifies any other non-string detail", async () => {
+    mockFetch(400, { detail: { code: 7 } });
+    await expect(api.post("/x", {})).rejects.toThrow('{"code":7}');
   });
 
   it("falls back to statusText when the error body is not JSON", async () => {

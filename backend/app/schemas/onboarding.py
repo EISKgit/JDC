@@ -1,14 +1,15 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.enums import Category
 from app.schemas.common import UTCDateTime
 
 
 class LifeProfileIn(BaseModel):
-    about: str | None = None
-    goals_text: str | None = None
-    challenges: str | None = None
-    focus_categories: list[Category] = []
+    # Bounded: this text is sent to the AI to write the profile summary.
+    about: str | None = Field(default=None, max_length=2000)
+    goals_text: str | None = Field(default=None, max_length=2000)
+    challenges: str | None = Field(default=None, max_length=2000)
+    focus_categories: list[Category] = Field(default_factory=list, max_length=len(Category))
 
 
 class LifeProfileOut(BaseModel):

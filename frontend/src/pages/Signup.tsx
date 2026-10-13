@@ -52,7 +52,7 @@ export function Signup() {
             maxLength={72}
             required
           />
-          <span className="field-hint">8–72 characters</span>
+          <span className="field-hint">8–72 characters, not a common password</span>
         </label>
         {error && <p className="form-error">{error}</p>}
         <PrivacyNote compact />

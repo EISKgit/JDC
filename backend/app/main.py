@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import check_security, get_settings
+from app.core.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 from app.db.migrate import run_migrations
 from app.db.session import engine
 
@@ -24,8 +25,21 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+# The interactive API docs list every endpoint and schema: handy locally, but no
+# reason to publish that map of the API in production.
+_docs = settings.is_development
+app = FastAPI(
+    title=settings.app_name,
+    lifespan=lifespan,
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
+)
 
+# Middleware runs outermost-last-added: security headers wrap everything (even
+# errors and CORS preflights), and CORS wraps the size limit so a 413 still carries
+# CORS headers and the browser can show the real error.
+app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -36,6 +50,7 @@ app.add_middleware(
     # needs its filename, and rate-limited clients need to know how long to wait.
     expose_headers=["Content-Disposition", "Retry-After"],
 )
+app.add_middleware(SecurityHeadersMiddleware, https_only=not settings.is_development)
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 

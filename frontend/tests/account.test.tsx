@@ -258,3 +258,19 @@ describe("Sign-up privacy note", () => {
     expect(screen.queryByText(/Your entries are sent to/)).toBeNull();
   });
 });
+
+describe("Sign out of all other devices", () => {
+  it("revokes other sessions and keeps this one", async () => {
+    setToken("t");
+    const calls = mockRoutes({
+      "GET /auth/me": USER,
+      "GET /config": CONFIG(),
+      "POST /auth/logout-all": { access_token: "fresh-after-logout-all", token_type: "bearer" },
+    });
+    renderAt("/account", <Account />);
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out of all other devices" }));
+    expect(await screen.findByText("Done. Every other device has been signed out.")).toBeTruthy();
+    expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/auth/logout-all"))).toBe(true);
+    expect(getToken()).toBe("fresh-after-logout-all");
+  });
+});
