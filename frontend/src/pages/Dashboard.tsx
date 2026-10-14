@@ -18,6 +18,7 @@ import { AboutJdc } from "../components/AboutJdc";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { LoadError } from "../components/Feedback";
 import { categoryMeta } from "../lib/categories";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const TREND_ICON: Record<string, LucideIcon> = {
   improving: TrendingUp,
@@ -87,6 +88,7 @@ function CardHeading({ Icon, children }: { Icon: LucideIcon; children: string })
 }
 
 export function Dashboard() {
+  usePageTitle("Dashboard");
   const [data, setData] = useState<DashboardData | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);

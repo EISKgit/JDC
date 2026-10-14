@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { AuthLayout } from "../components/AuthLayout";
 import { GoogleButton, PrivacyNote } from "../components/Feedback";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export function Signup() {
+  usePageTitle("Sign up");
   const { register } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");

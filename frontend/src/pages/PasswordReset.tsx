@@ -4,9 +4,11 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type { Token } from "../api/types";
 import { AuthLayout } from "../components/AuthLayout";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export function ForgotPassword() {
+  usePageTitle("Forgot password");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,7 @@ export function ForgotPassword() {
 }
 
 export function ResetPassword() {
+  usePageTitle("Reset password");
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const { loginWithToken } = useAuth();

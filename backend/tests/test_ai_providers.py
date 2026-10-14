@@ -44,7 +44,8 @@ def test_narratives_are_cached_but_failures_are_not():
     fallback_text = provider.generate_narrative(kind="recommendation", context={"category": "career"})
     assert fallback_text.startswith("Your career score")
     llm.fail = False
-    assert provider.generate_narrative(kind="recommendation", context={"category": "career"}) == "LLM says recommendation"
+    narrative = provider.generate_narrative(kind="recommendation", context={"category": "career"})
+    assert narrative == "LLM says recommendation"
 
 
 def _fake_post(content: str, status: int = 200):

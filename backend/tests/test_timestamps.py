@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def test_timestamps_are_serialized_as_utc(client):
@@ -14,5 +14,5 @@ def test_timestamps_are_serialized_as_utc(client):
         # An explicit offset is what lets the browser convert to the user's local
         # day correctly; a bare "2026-10-09T16:47:52" would be read as local time.
         parsed = datetime.fromisoformat(value)
-        assert parsed.utcoffset() == timezone.utc.utcoffset(None)
-        assert abs((datetime.now(timezone.utc) - parsed).total_seconds()) < 60
+        assert parsed.utcoffset() == UTC.utcoffset(None)
+        assert abs((datetime.now(UTC) - parsed).total_seconds()) < 60

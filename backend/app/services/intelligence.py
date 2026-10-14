@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -38,7 +38,7 @@ def generate_period_summary(
     vs. AI split").
     """
     days = PERIOD_DAYS[period]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now - timedelta(days=days)
     prev_start = start - timedelta(days=days)
 
@@ -118,7 +118,7 @@ def generate_period_summary(
 def generate_forecasts(
     db: Session, user: User, ai_provider: AIProvider, horizon_days: int
 ) -> list[ForecastOut]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now - timedelta(days=horizon_days)
     prev_start = start - timedelta(days=horizon_days)
 

@@ -6,6 +6,7 @@ import type { Category, CategoryOption, Goal, GoalStatus, UpdateItem } from "../
 import { CategoryIcon } from "../components/CategoryIcon";
 import { LoadError } from "../components/Feedback";
 import { categoryMeta } from "../lib/categories";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const SECTIONS: { status: GoalStatus; title: string }[] = [
   { status: "active", title: "Active" },
@@ -109,6 +110,7 @@ function GoalCard({
 }
 
 export function Goals() {
+  usePageTitle("Goals");
   const [goals, setGoals] = useState<Goal[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [updates, setUpdates] = useState<UpdateItem[]>([]);

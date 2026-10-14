@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -15,6 +15,8 @@ class Event(Base):
     """
 
     __tablename__ = "events"
+    # Scores and trends read "this user's events in a date range".
+    __table_args__ = (Index("ix_events_user_id_created_at", "user_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     update_id: Mapped[int] = mapped_column(ForeignKey("updates.id"), nullable=False, index=True)
@@ -34,7 +36,7 @@ class Event(Base):
     is_corrected: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), index=True
+        DateTime, default=lambda: datetime.now(UTC), index=True
     )
 
     update: Mapped["Update"] = relationship(back_populates="events")  # noqa: F821

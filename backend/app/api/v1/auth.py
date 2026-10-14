@@ -1,6 +1,6 @@
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlencode
 
 import httpx
@@ -192,13 +192,13 @@ def export_my_data(current_user: User = Depends(get_current_user), db: Session =
         .all()
     )
     export = AccountExport(
-        exported_at=datetime.now(timezone.utc),
+        exported_at=datetime.now(UTC),
         user=current_user,
         life_profile=current_user.profile,
         goals=current_user.goals,
         updates=updates,
     )
-    filename = f"jdc-export-{datetime.now(timezone.utc):%Y-%m-%d}.json"
+    filename = f"jdc-export-{datetime.now(UTC):%Y-%m-%d}.json"
     return JSONResponse(
         export.model_dump(mode="json"),
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

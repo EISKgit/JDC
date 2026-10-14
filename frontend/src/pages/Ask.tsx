@@ -1,4 +1,4 @@
-import { ArrowUpRight, MessageCircleQuestion, SendHorizontal } from "lucide-react";
+import { ArrowUpRight, MessageCircleQuestion, RotateCcw, SendHorizontal } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, api } from "../api/client";
@@ -6,6 +6,8 @@ import type { AskResponse, ChatTurn, UpdateItem } from "../api/types";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { PrivacyNote } from "../components/Feedback";
 import { dayKey, longDate, relativeDayLabel, timeOfDay } from "../lib/dates";
+import { clearAskHistory, loadAskHistory, saveAskHistory } from "../lib/askHistory";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const SUGGESTIONS = [
   "How was my week overall?",
@@ -67,10 +69,15 @@ function SourceCard({ source, number }: { source: UpdateItem; number: number }) 
 }
 
 export function Ask() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  usePageTitle("Ask JDC");
+  const [messages, setMessages] = useState<Message[]>(() => loadAskHistory<Message>());
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    saveAskHistory(messages);
+  }, [messages]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
@@ -103,6 +110,11 @@ export function Ask() {
     }
   }
 
+  function startOver() {
+    clearAskHistory();
+    setMessages([]);
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     ask(question);
@@ -122,6 +134,12 @@ export function Ask() {
         <h1>Ask about your journal</h1>
         <p className="page-subtitle">Answers come only from your own entries, with links to the ones used.</p>
         <PrivacyNote compact />
+        {messages.length > 0 && (
+          <button type="button" className="btn-secondary btn-small" onClick={startOver} disabled={asking}>
+            <RotateCcw size={14} aria-hidden="true" />
+            New conversation
+          </button>
+        )}
       </header>
 
       {messages.length === 0 && (

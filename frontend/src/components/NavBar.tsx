@@ -1,6 +1,6 @@
 import { LayoutDashboard, MessageCircleQuestion, NotebookPen, Target, UserRound } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
 import { Logo } from "./Logo";
 
 const LINKS = [

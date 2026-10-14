@@ -15,6 +15,7 @@ import {
   timeOfDay,
   tzOffsetFor,
 } from "../lib/dates";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const RECENT_DAY_CHIPS = 10;
 
@@ -351,6 +352,7 @@ function DayCategorySummary({ updates }: { updates: UpdateItem[] }) {
 }
 
 export function Updates() {
+  usePageTitle("Updates");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [updates, setUpdates] = useState<UpdateItem[]>([]);
   const [content, setContent] = useState("");

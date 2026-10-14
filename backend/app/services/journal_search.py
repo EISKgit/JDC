@@ -9,7 +9,7 @@ vector store or index that could go stale.
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session, selectinload
@@ -53,12 +53,12 @@ def _stem(token: str) -> str:
 def local_now(tz_offset_minutes: int) -> datetime:
     """The user's wall-clock time. `tz_offset_minutes` follows JavaScript's
     Date.getTimezoneOffset(): UTC minus local, so India (UTC+5:30) is -330."""
-    return datetime.now(timezone.utc) - timedelta(minutes=tz_offset_minutes)
+    return datetime.now(UTC) - timedelta(minutes=tz_offset_minutes)
 
 
 def to_local(utc: datetime, tz_offset_minutes: int) -> datetime:
     if utc.tzinfo is None:
-        utc = utc.replace(tzinfo=timezone.utc)
+        utc = utc.replace(tzinfo=UTC)
     return utc - timedelta(minutes=tz_offset_minutes)
 
 

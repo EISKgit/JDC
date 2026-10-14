@@ -1,6 +1,6 @@
 import re
 from collections.abc import Callable
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -189,7 +189,7 @@ def test_agent_failure_falls_back_to_retrieval(client, journal):
 
 
 def test_day_summary_without_ai(client, journal):
-    today = datetime.now(timezone.utc).date().isoformat()  # tz_offset 0 = UTC days
+    today = datetime.now(UTC).date().isoformat()  # tz_offset 0 = UTC days
     data = client.post(
         "/api/v1/assistant/day-summary",
         headers=journal["headers"],
@@ -203,7 +203,7 @@ def test_day_summary_without_ai(client, journal):
 def test_day_summary_is_cached_until_the_day_changes(client, journal):
     reply = lambda _messages: AIMessage(content="You trained, shopped and studied.")  # noqa: E731
     model = ScriptedModel(script=[reply, reply])
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     with SessionLocal() as db:
         user = db.get(User, journal["user_id"])
         first = assistant.summarize_day(db, user, today, llm=model)
@@ -211,7 +211,9 @@ def test_day_summary_is_cached_until_the_day_changes(client, journal):
     assert first.used_ai and again.summary == first.summary
     assert len(model.calls) == 1  # second call served from cache
 
-    client.patch(f"/api/v1/updates/{journal['food']['id']}", headers=journal["headers"], json={"content": "Read a book"})
+    client.patch(
+        f"/api/v1/updates/{journal['food']['id']}", headers=journal["headers"], json={"content": "Read a book"}
+    )
     with SessionLocal() as db:
         assistant.summarize_day(db, db.get(User, journal["user_id"]), today, llm=model)
     assert len(model.calls) == 2  # the edit changed the entries, so it was summarised again

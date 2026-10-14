@@ -3,8 +3,10 @@ import { ApiError, api } from "../api/client";
 import type { Category, CategoryOption, LifeProfile } from "../api/types";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { LoadError, PrivacyNote } from "../components/Feedback";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export function Onboarding() {
+  usePageTitle("Life Profile");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [about, setAbout] = useState("");
   const [goalsText, setGoalsText] = useState("");

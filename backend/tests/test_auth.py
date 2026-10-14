@@ -6,7 +6,7 @@ def register(client, email="user@example.com", password="correct-horse"):
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/health").json() == {"status": "ok", "database": "ok"}
 
 
 def test_register_login_and_me(client):

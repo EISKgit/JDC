@@ -53,6 +53,7 @@ function renderAsk() {
 
 afterEach(() => {
   cleanup();
+  sessionStorage.clear(); // the conversation is remembered across renders on purpose
 });
 
 describe("Ask JDC", () => {
@@ -118,5 +119,30 @@ describe("Ask JDC", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     await screen.findByText("Fine.");
     expect(bodies[1].history).toEqual([{ role: "user", content: "How was my week overall?" }]);
+  });
+});
+
+describe("Ask JDC conversation memory", () => {
+  it("keeps the conversation when leaving the page and coming back", async () => {
+    mockAsk([{ answer: "Twice this week [#12].", sources: [GYM], used_ai: true }]);
+    renderAsk();
+    fireEvent.click(screen.getByRole("button", { name: "When did I last go to the gym?" }));
+    await screen.findByText(/Twice this week/);
+
+    cleanup(); // navigate away
+    renderAsk(); // and back
+    expect(screen.getByText(/Twice this week/)).toBeTruthy();
+    expect(screen.getByText("When did I last go to the gym?", { selector: ".bubble-user" })).toBeTruthy();
+  });
+
+  it("New conversation clears it", async () => {
+    mockAsk([{ answer: "Twice this week [#12].", sources: [GYM], used_ai: true }]);
+    renderAsk();
+    fireEvent.click(screen.getByRole("button", { name: "When did I last go to the gym?" }));
+    await screen.findByText(/Twice this week/);
+
+    fireEvent.click(screen.getByRole("button", { name: "New conversation" }));
+    expect(screen.queryByText(/Twice this week/)).toBeNull();
+    expect(sessionStorage.getItem("jdc_ask_history")).toBe("[]");
   });
 });

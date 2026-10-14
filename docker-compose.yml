@@ -1,0 +1,57 @@
+# Run the whole app in containers:  docker compose up --build   ->  http://localhost:8080
+#
+#   web      nginx: serves the React build and proxies /api to the backend (port 8080)
+#   backend  FastAPI (not exposed; only reachable from "web")
+#   db       PostgreSQL 17 (not exposed; data kept in the "pgdata" volume)
+#
+# Secrets (SECRET_KEY, GROQ_API_KEY, ...) come from backend/.env. This runs with
+# ENVIRONMENT=production, so the backend refuses to start without a strong SECRET_KEY.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: jdc
+      POSTGRES_DB: jdc
+      # Only reachable inside this compose network; override with POSTGRES_PASSWORD in
+      # the shell or a root .env file for anything beyond local use.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jdc-local-password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jdc -d jdc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://jdc:${POSTGRES_PASSWORD:-jdc-local-password}@db:5432/jdc
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      FRONTEND_URL: http://localhost:8080
+      CORS_ORIGINS: http://localhost:8080
+      GOOGLE_REDIRECT_URI: http://localhost:8080/api/v1/auth/google/callback
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

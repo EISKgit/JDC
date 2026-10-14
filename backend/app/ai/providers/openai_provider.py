@@ -15,7 +15,8 @@ capitalisation, keeping the user's meaning, first-person voice and details (numb
 terms and abbreviations (e.g. DSA, C++) as written instead of expanding them.
 Respond ONLY with JSON: {{"events": [{{"category": str, "type": str, "description": str, \
 "sentiment": "positive"|"neutral"|"negative", "confidence": float between 0 and 1, \
-"amount": float (optional), "currency": ISO 4217 code like INR or USD (optional), "duration_minutes": int (optional)}}]}}"""
+"amount": float (optional), "currency": ISO 4217 code like INR or USD (optional), \
+"duration_minutes": int (optional)}}]}}"""
 
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"

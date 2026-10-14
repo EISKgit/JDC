@@ -14,14 +14,16 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * as HTTP headers from the web server.
  */
 function contentSecurityPolicy(apiBaseUrl: string): Plugin {
-  const apiOrigin = new URL(apiBaseUrl).origin
+  // A relative base (e.g. "/api/v1", when nginx serves the app and proxies the API on
+  // the same address) needs nothing beyond 'self'.
+  const apiOrigin = apiBaseUrl.startsWith('/') ? '' : ` ${new URL(apiBaseUrl).origin}`
   const policy = [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' https://fonts.googleapis.com",
     'font-src https://fonts.gstatic.com',
     "img-src 'self' data:",
-    `connect-src 'self' ${apiOrigin}`,
+    `connect-src 'self'${apiOrigin}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

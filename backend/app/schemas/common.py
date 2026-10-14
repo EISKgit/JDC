@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from pydantic import AfterValidator
@@ -10,8 +10,8 @@ def _as_utc(value: datetime) -> datetime:
     # as *local* time — shifting every timestamp and putting late-evening
     # updates on the wrong day in the history view.
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 UTCDateTime = Annotated[datetime, AfterValidator(_as_utc)]

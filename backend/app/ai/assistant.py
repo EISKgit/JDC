@@ -22,7 +22,7 @@ import logging
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 
 from langchain_core.language_models import BaseChatModel
@@ -71,7 +71,8 @@ How to work:
 entries_on_date for a specific day.
 - If a search finds nothing, try once more with related words (e.g. "workout" -> "gym exercise", \
 "money" -> "spent bought") or with the matching area filter before saying there's nothing.
-- Cite every entry you rely on as [#id] right after the sentence it supports, e.g. "You went to the gym twice [#12][#15]."
+- Cite every entry you rely on as [#id] right after the sentence it supports, \
+e.g. "You went to the gym twice [#12][#15]."
 - If the journal has nothing relevant, say so plainly and suggest logging it.
 - Speak to the user as "you". Be concise: 2-6 sentences, or a short list. Plain text only: no emoji, no headings, \
 no tables."""
@@ -165,7 +166,7 @@ def build_tools(db: Session, user: User, tz_offset_minutes: int) -> list[BaseToo
         0-100 score (same formula as the dashboard; 50 = neutral baseline with no data) and the trend vs. the
         previous period of the same length."""
         days = max(1, min(int(days), 90))
-        now = datetime.now(timezone.utc).replace(tzinfo=None)  # DB stores naive UTC
+        now = datetime.now(UTC).replace(tzinfo=None)  # DB stores naive UTC
         current = events_by_category(get_events_in_range(db, user.id, now - timedelta(days=days), now))
         previous = events_by_category(
             get_events_in_range(db, user.id, now - timedelta(days=2 * days), now - timedelta(days=days))

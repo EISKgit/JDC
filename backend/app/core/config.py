@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     # Where the React app is served; used for links the backend sends people to
     # (Google sign-in redirect, password-reset emails).
     frontend_url: str = "http://localhost:5173"
+    log_level: str = "INFO"
 
     # Database
     database_url: str = "sqlite:///./ilc.db"

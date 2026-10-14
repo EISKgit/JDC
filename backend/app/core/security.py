@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -52,7 +52,7 @@ def create_token(purpose: str, subject: str, minutes: int, **claims: Any) -> str
     payload = {
         "sub": subject,
         "purpose": purpose,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=minutes),
+        "exp": datetime.now(UTC) + timedelta(minutes=minutes),
         **claims,
     }
     return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
 
 /** Where the backend sends the browser after Google sign-in: /auth/callback#token=... or #error=... */
 export function AuthCallback() {

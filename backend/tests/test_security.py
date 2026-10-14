@@ -144,7 +144,9 @@ def test_password_checks_are_rate_limited_for_signed_in_users(client, monkeypatc
     monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 3)
     headers = register(client)
     attempt = lambda: client.post(  # noqa: E731
-        f"{API}/auth/change-password", headers=headers, json={"current_password": "guess", "new_password": "n3w-pass-word"}
+        f"{API}/auth/change-password",
+        headers=headers,
+        json={"current_password": "guess", "new_password": "n3w-pass-word"},
     )
     assert [attempt().status_code for _ in range(4)] == [400, 400, 400, 429]
 
@@ -174,7 +176,9 @@ def test_weak_passwords_are_refused_everywhere(client):
 
     headers = register(client)
     change = client.post(
-        f"{API}/auth/change-password", headers=headers, json={"current_password": "correct-horse", "new_password": "12345678"}
+        f"{API}/auth/change-password",
+        headers=headers,
+        json={"current_password": "correct-horse", "new_password": "12345678"},
     )
     assert change.status_code == 400
 

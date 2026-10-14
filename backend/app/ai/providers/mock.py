@@ -15,7 +15,8 @@ _CATEGORY_RULES: list[tuple[Category, list[str], str]] = [
                        "sleep*", "slept", "doctor", "sick"], "exercise"),
     (Category.career, ["work", "worked", "working", "project*", "meeting*", "coding", "code", "job*", "interview*",
                        "deadline*", "client*", "presentation*"], "work_activity"),
-    (Category.finance, ["spent", "spend*", "bought", "buy*", "expense*", "paid", "salary", "saved", "budget*"], "expense"),
+    (Category.finance, ["spent", "spend*", "bought", "buy*", "expense*", "paid", "salary", "saved", "budget*"],
+     "expense"),
     (Category.relationships, ["friend*", "family", "argument*", "fight*", "dinner with", "partner*", "mom", "dad",
                               "relationship*"], "social_interaction"),
     (Category.learning, ["learn*", "study", "studied", "studying", "course*", "read", "reading", "book*", "tutorial*",
@@ -187,7 +188,11 @@ class MockProvider(AIProvider):
         deltas: dict[str, int] = context.get("category_deltas", {})
         for cat, delta in deltas.items():
             if delta > 0:
-                parts.append(f"{_label(cat).capitalize()} activity increased by {delta} compared to the previous period.")
+                parts.append(
+                    f"{_label(cat).capitalize()} activity increased by {delta} compared to the previous period."
+                )
             elif delta < 0:
-                parts.append(f"{_label(cat).capitalize()} activity decreased by {abs(delta)} compared to the previous period.")
+                parts.append(
+                    f"{_label(cat).capitalize()} activity decreased by {abs(delta)} compared to the previous period."
+                )
         return " ".join(parts)

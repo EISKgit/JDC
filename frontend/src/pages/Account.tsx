@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, api, downloadFile } from "../api/client";
 import type { Token } from "../api/types";
 import { PrivacyNote } from "../components/Feedback";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
 import { longDate, dayKey } from "../lib/dates";
+import { usePageTitle } from "../lib/usePageTitle";
 
 function errorText(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -173,6 +174,7 @@ function DeleteAccount() {
 }
 
 export function Account() {
+  usePageTitle("Account");
   const { user } = useAuth();
   const [exportError, setExportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);

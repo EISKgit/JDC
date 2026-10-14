@@ -4,16 +4,20 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import check_security, get_settings
 from app.core.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
+from app.core.observability import UnhandledErrorMiddleware, configure_logging
 from app.db.migrate import run_migrations
 from app.db.session import engine
 
 logger = logging.getLogger("app")
 
 settings = get_settings()
+configure_logging(settings.log_level)
 # Fail fast, before serving anything, if the config is unsafe outside development.
 for warning in check_security(settings):
     logger.warning(warning)
@@ -39,6 +43,7 @@ app = FastAPI(
 # Middleware runs outermost-last-added: security headers wrap everything (even
 # errors and CORS preflights), and CORS wraps the size limit so a 413 still carries
 # CORS headers and the browser can show the real error.
+app.add_middleware(UnhandledErrorMiddleware)
 app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
 app.add_middleware(
     CORSMiddleware,
@@ -56,5 +61,13 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> JSONResponse:
+    """Liveness + readiness: also checks the database, so a load balancer or Docker
+    stops sending traffic to an instance whose database is unreachable."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Health check: database unreachable")
+        return JSONResponse({"status": "error", "database": "unreachable"}, status_code=503)
+    return JSONResponse({"status": "ok", "database": "ok"})

@@ -3,9 +3,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ApiError, takeSessionExpired } from "../api/client";
 import { AuthLayout } from "../components/AuthLayout";
 import { GoogleButton } from "../components/Feedback";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export function Login() {
+  usePageTitle("Log in");
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
