@@ -1,11 +1,11 @@
-import { Archive, Check, RotateCcw, Target, Trash2 } from "lucide-react";
-import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ApiError, api } from "../api/client";
-import type { Category, CategoryOption, Goal, GoalStatus, UpdateItem } from "../api/types";
-import { CategoryIcon } from "../components/CategoryIcon";
+import { Target } from "lucide-react";
+import { type FormEvent, useMemo, useState } from "react";
+import { categoriesApi, goalsApi, updatesApi } from "../api/endpoints";
+import type { Category, Goal, GoalStatus } from "../api/types";
 import { LoadError } from "../components/Feedback";
-import { categoryMeta } from "../lib/categories";
+import { GoalCard } from "../components/goals/GoalCard";
+import { errorMessage, useAsync } from "../hooks/useAsync";
+import { weeklyActivity } from "../lib/goals";
 import { usePageTitle } from "../lib/usePageTitle";
 
 const SECTIONS: { status: GoalStatus; title: string }[] = [
@@ -14,108 +14,16 @@ const SECTIONS: { status: GoalStatus; title: string }[] = [
   { status: "archived", title: "Archived" },
 ];
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-/** Events per life area over the last 7 days, to show goal-related activity. */
-function weeklyActivity(updates: UpdateItem[]): Map<string, number> {
-  const since = Date.now() - WEEK_MS;
-  const counts = new Map<string, number>();
-  for (const u of updates) {
-    if (new Date(u.created_at).getTime() < since) continue;
-    for (const e of u.events) counts.set(e.category, (counts.get(e.category) ?? 0) + 1);
-  }
-  return counts;
-}
-
-function GoalCard({
-  goal,
-  activity,
-  onChange,
-  onDelete,
-}: {
-  goal: Goal;
-  activity: number;
-  onChange: (goal: Goal) => void;
-  onDelete: (id: number) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const meta = categoryMeta(goal.category);
-
-  async function setStatus(status: GoalStatus) {
-    setBusy(true);
-    try {
-      onChange(await api.patch<Goal>(`/goals/${goal.id}`, { status }));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove() {
-    setBusy(true);
-    try {
-      await api.delete(`/goals/${goal.id}`);
-      onDelete(goal.id);
-    } catch {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <li className={`card goal-card goal-${goal.status}`} style={{ "--accent": meta.color } as CSSProperties}>
-      <div className="goal-main">
-        <span className="goal-icon">
-          <CategoryIcon category={goal.category} size={18} />
-        </span>
-        <div>
-          <strong className="goal-title">{goal.title}</strong>
-          {goal.description && <p className="goal-description">{goal.description}</p>}
-          <span className="goal-meta">
-            {meta.label}
-            {goal.status === "active" && (
-              <>
-                {" · "}
-                {activity > 0 ? (
-                  `${activity} ${activity === 1 ? "entry" : "entries"} in this area this week`
-                ) : (
-                  <Link to="/updates">no entries in this area this week</Link>
-                )}
-              </>
-            )}
-          </span>
-        </div>
-      </div>
-      <div className="goal-actions">
-        {goal.status === "active" ? (
-          <>
-            <button type="button" className="btn-secondary btn-small" disabled={busy} onClick={() => setStatus("completed")}>
-              <Check size={14} aria-hidden="true" />
-              Done
-            </button>
-            <button type="button" className="icon-btn" aria-label="Archive goal" disabled={busy} onClick={() => setStatus("archived")}>
-              <Archive size={15} aria-hidden="true" />
-            </button>
-          </>
-        ) : (
-          <button type="button" className="btn-secondary btn-small" disabled={busy} onClick={() => setStatus("active")}>
-            <RotateCcw size={14} aria-hidden="true" />
-            Reopen
-          </button>
-        )}
-        <button type="button" className="icon-btn" aria-label="Delete goal" disabled={busy} onClick={remove}>
-          <Trash2 size={15} aria-hidden="true" />
-        </button>
-      </div>
-    </li>
-  );
-}
-
 export function Goals() {
   usePageTitle("Goals");
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [updates, setUpdates] = useState<UpdateItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data, loading, error: loadError, retry, setData } = useAsync(async () => {
+    const [goals, categories, updates] = await Promise.all([goalsApi.list(), categoriesApi.list(), updatesApi.list()]);
+    return { goals, categories, updates };
+  });
+  const goals = data?.goals ?? [];
+  const categories = data?.categories ?? [];
+  const setGoals = (change: (prev: Goal[]) => Goal[]) =>
+    setData((prev) => (prev ? { ...prev, goals: change(prev.goals) } : prev));
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<Category>("health");
@@ -123,36 +31,8 @@ export function Goals() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Bumping `attempt` (the Try again button) re-runs the load.
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const [g, c, u] = await Promise.all([
-          api.get<Goal[]>("/goals"),
-          api.get<CategoryOption[]>("/categories"),
-          api.get<UpdateItem[]>("/updates"),
-        ]);
-        setGoals(g);
-        setCategories(c);
-        setUpdates(u);
-      } catch (err) {
-        setLoadError(err instanceof ApiError ? err.message : "Something went wrong");
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [attempt]);
-
-  function retry() {
-    setLoading(true);
-    setLoadError(null);
-    setAttempt((n) => n + 1);
-  }
-
-  const activity = useMemo(() => weeklyActivity(updates), [updates]);
+  const updates = data?.updates;
+  const activity = useMemo(() => weeklyActivity(updates ?? []), [updates]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -160,7 +40,7 @@ export function Goals() {
     setSaving(true);
     setFormError(null);
     try {
-      const created = await api.post<Goal>("/goals", {
+      const created = await goalsApi.create({
         title: title.trim(),
         category,
         description: description.trim() || null,
@@ -169,7 +49,7 @@ export function Goals() {
       setTitle("");
       setDescription("");
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Could not add the goal");
+      setFormError(errorMessage(err, "Could not add the goal"));
     } finally {
       setSaving(false);
     }

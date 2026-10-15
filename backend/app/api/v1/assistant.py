@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.ai import assistant
-from app.core.rate_limit import limit_by_user
-from app.core.security import get_current_user
+from app.api.deps import get_current_user
+from app.api.rate_limits import limit_by_user
 from app.db.session import get_db
-from app.models.update import Update
 from app.models.user import User
+from app.repositories.updates import UpdateRepository
 from app.schemas.assistant import AskRequest, AskResponse, DaySummaryRequest, DaySummaryResponse
 
 router = APIRouter(prefix="/assistant", tags=["assistant"], dependencies=[Depends(limit_by_user("ai"))])
@@ -26,13 +26,9 @@ def ask(
         history=[turn.model_dump() for turn in payload.history],
         tz_offset_minutes=payload.tz_offset_minutes,
     )
-    by_id = {
-        u.id: u
-        for u in db.query(Update).filter(Update.user_id == current_user.id, Update.id.in_(reply.source_ids)).all()
-    }
     return AskResponse(
         answer=reply.answer,
-        sources=[by_id[i] for i in reply.source_ids if i in by_id],
+        sources=UpdateRepository(db).get_many_owned(current_user.id, reply.source_ids),
         used_ai=reply.used_ai,
     )
 

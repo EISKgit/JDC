@@ -17,6 +17,7 @@ insights, trends, scores, recommendations, and short-term forecasts.
 
 - [Locked MVP decisions](#locked-mvp-decisions)
 - [How it works](#how-it-works)
+- [Architecture](#architecture)
 - [Project structure — what is where](#project-structure--what-is-where)
 - [Setup](#setup)
 - [Start](#start)
@@ -183,6 +184,56 @@ question -> [agent: Groq LLM] --tool call--> [tools] --results--> [agent] -> ans
   otherwise always "win". With no events at all there's nothing to compare, so a
   fixed "log your first update" message is shown instead (no AI call). See `generate_dashboard` in `backend/app/services/intelligence.py`.
 
+## Architecture
+
+The backend is split into layers, and **dependencies only point inwards**:
+
+```text
+ HTTP request
+      |
+  api/        routes: parse the request, call ONE service method, shape the response
+      |       deps.py = composition root: builds each service with its parts
+      v
+  services/   business rules (login lockout, ownership, re-extraction, scoring...)
+      |       no FastAPI, no SQL, no status codes: they raise domain errors
+      v
+  repositories/   every database query lives here (and only here)
+      v
+  models/     SQLAlchemy tables
+
+  core/    shared tools used by every layer: config, tokens, password hashing, rate limiter
+  domain/  business errors (NotFound, Conflict, ...): imported by all, imports nothing
+```
+
+`api/errors.py` is the only place that turns a domain error into an HTTP status
+(`NotFound` -> 404, `TooManyRequests` -> 429 + `Retry-After`, ...).
+`tests/test_architecture.py` **fails the build** if these rules are broken: a
+service importing FastAPI, a query outside `repositories/`, a route raising
+`HTTPException`. The frontend has the same idea: pages call typed functions in
+`src/api/endpoints.ts`, and a test fails if any file outside `src/api` calls the
+backend directly.
+
+### SOLID, where it shows up
+
+| Principle | In this codebase |
+|---|---|
+| **S**ingle responsibility | Routes only translate HTTP; `AuthService` (credentials) and `AccountService` (export/delete) are separate because they change for different reasons; `GoogleOAuthClient` only talks to Google; `LoginThrottle` holds the lockout policy while `RateLimiter` only counts. Frontend: pages orchestrate, `components/updates/*` each render one thing, `useAsync` owns loading/error/retry |
+| **O**pen/closed | `EmailSender`: add SendGrid/SES by writing a class, no caller changes. Mock AI narratives are a registry (`@narrative("kind")`): new kinds don't touch `generate_narrative`. New AI providers implement `AIProvider` |
+| **L**iskov substitution | Every `OwnedRepository` subclass (updates, goals, events) behaves the same for `get_owned`; any `EmailSender` / `PasswordHasher` / `AIProvider` can replace another (the tests use in-memory fakes in exactly those slots) |
+| **I**nterface segregation | Small `Protocol`s with only what callers use: `PasswordHasher` (hash/verify/burn), `EmailSender` (send), `OAuthProvider` (authorization_url/fetch_profile) |
+| **D**ependency inversion | Services receive their repositories, hasher, throttle, email sender and AI provider (`api/deps.py` wires the real ones). Tests swap them with `app.dependency_overrides` or plain constructor arguments; no monkeypatching of module internals |
+
+### Adding a feature the same way
+
+1. **Model + migration:** add the column/table in `models/`, then
+   `.venv/Scripts/alembic.exe revision --autogenerate -m "..."`.
+2. **Repository:** add the query method in `repositories/` (ownership via `OwnedRepository.get_owned`).
+3. **Service:** the rule, raising `domain.errors` on failure; commit once at the end of the use case.
+4. **Wire it:** a `get_x_service` provider in `api/deps.py`.
+5. **Route:** a thin function in `api/v1/` that calls the service.
+6. **Frontend:** a typed function in `src/api/endpoints.ts`; load with `useAsync`;
+   keep each component to one job.
+
 ## Project structure — what is where
 
 ```
@@ -216,13 +267,17 @@ ILC/
 │   │   ├── test_migrations_and_config.py    migrations match models; SECRET_KEY guard
 │   │   ├── test_security.py                 headers, size limits, lockout, password rules, logout-all
 │   │   ├── test_operations.py               SQLite settings, indexes, query counts, health, 500s
+│   │   ├── test_architecture.py             layering rules (fails if a layer leaks)
+│   │   ├── test_services_unit.py            services with in-memory fakes; error -> status mapping
 │   │   └── test_timestamps.py             API timestamps carry an explicit UTC offset
 │   └── app/
 │       ├── main.py               creates the FastAPI app, CORS, runs migrations on startup
+│       ├── domain/
+│       │   └── errors.py           business errors (NotFound, Conflict, TooManyRequests, ...)
 │       ├── core/
 │       │   ├── config.py           typed settings, read from .env; SECRET_KEY safety check
-│       │   ├── security.py         bcrypt + signed tokens (login, reset links, Google state)
-│       │   ├── rate_limit.py         per-IP / per-user limits (429) + per-account login lockout
+│       │   ├── security.py         PasswordHasher (bcrypt) + signed tokens (login, reset, Google state)
+│       │   ├── rate_limit.py         RateLimiter: sliding-window counting (raises TooManyRequests)
 │       │   ├── passwords.py            password strength rules
 │       │   ├── middleware.py           security headers + request size limit
 │       │   └── observability.py          logging setup + JSON 500s with a reference id
@@ -249,16 +304,29 @@ ILC/
 │       │   ├── assistant.py              Ask JDC: LangGraph agent + tools, day summaries
 │       │   ├── text_polish.py            rule-based statement tidy-up (mock provider)
 │       │   └── factory.py                get_ai_provider() — picks a provider from .env
-│       ├── services/                Business logic (no HTTP concerns here)
+│       ├── repositories/           ALL database queries (one class per table)
+│       │   ├── base.py               Repository + OwnedRepository.get_owned (the "is it yours?" rule)
+│       │   └── users.py, updates.py, events.py, goals.py, profiles.py
+│       ├── services/                Business rules (no HTTP, no SQL): receive their dependencies
+│       │   ├── auth_service.py        sign-up, login + lockout, passwords, sign-out-everywhere, Google
+│       │   ├── account_service.py       export / delete your account
+│       │   ├── update_service.py          write / edit (re-extract) / delete updates
+│       │   ├── goal_service.py, event_service.py, profile_service.py
+│       │   ├── login_throttle.py          per-account lockout policy
+│       │   ├── google_oauth.py              talks to Google's OAuth servers
+│       │   ├── notifications.py               EmailSender: SMTP or log-only
 │       │   ├── event_extraction.py    runs AI extraction, persists Event rows,
 │       │   │                            re-extracts edited updates keeping fixes
 │       │   ├── metrics.py               deterministic counts + score formulas
 │       │   ├── forecasting.py             trend classification (compute_trend)
 │       │   ├── journal_search.py          BM25 search over a user's entries (RAG retrieval)
-│       │   ├── email.py                   SMTP sender (logs the message when SMTP isn't set)
-│       │   └── intelligence.py              orchestrates metrics+AI into summaries,
-│       │                                       forecasts, and the dashboard payload
-│       └── api/v1/                 HTTP endpoints (thin — delegate to services)
+│       │   └── intelligence.py              IntelligenceService: summaries, forecasts,
+│       │                                       dashboard (metrics are pure functions)
+│       ├── api/
+│       │   ├── deps.py               composition root: builds services, current user
+│       │   ├── errors.py               domain errors -> HTTP status codes (one place)
+│       │   └── rate_limits.py            per-IP / per-user limit dependencies
+│       └── api/v1/                 HTTP endpoints (thin: parse, call a service, respond)
 │           ├── router.py             collects every v1 router
 │           ├── auth.py                 register/login/me, passwords, export/delete, Google
 │           ├── meta.py                   GET /config (public: Google on? outside AI used?)
@@ -298,9 +366,13 @@ ILC/
 │       │   └── appConfig.ts                 useAppConfig(): GET /config once
 │       ├── api/
 │       │   ├── client.ts                fetch wrapper: JWT, errors, expired sessions, downloads
+│       │   ├── endpoints.ts               every backend endpoint as a typed function (authApi, goalsApi...)
 │       │   └── types.ts                   TypeScript types mirroring backend schemas
+│       ├── hooks/
+│       │   └── useAsync.ts              load / error / retry for any page's data
 │       ├── context/
-│       │   └── AuthContext.tsx              logged-in user + login/register/logout
+│       │   ├── AuthContext.tsx              <AuthProvider>: logged-in user + login/register/logout
+│       │   └── auth.ts                        useAuth() + the login check
 │       ├── components/
 │       │   ├── ProtectedRoute.tsx             redirects to /login if signed out (retry if offline)
 │       │   ├── Feedback.tsx                     LoadError, ErrorBoundary, PrivacyNote, GoogleButton
@@ -308,7 +380,11 @@ ILC/
 │       │   ├── AboutJdc.tsx                       "JDC at a glance": flow diagram + screen map
 │       │   ├── CategoryIcon.tsx                     a life area's icon in its accent color
 │       │   ├── AuthLayout.tsx                       two-panel login/signup layout
-│       │   └── Logo.tsx                               the JDC logo mark
+│       │   ├── Logo.tsx                               the JDC logo mark
+│       │   ├── updates/        EventRow, UpdateCard, DaySummaryPanel, DayCategorySummary
+│       │   ├── goals/          GoalCard
+│       │   ├── account/        ChangePassword, SignOutEverywhere, DeleteAccount
+│       │   └── profile/        ProfileForm
 │       └── pages/
 │           ├── Login.tsx / Signup.tsx
 │           ├── AuthCallback.tsx                   finishes Google sign-in

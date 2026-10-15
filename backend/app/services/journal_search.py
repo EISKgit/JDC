@@ -12,11 +12,11 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from rank_bm25 import BM25Okapi
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.ai.providers.mock import CATEGORY_KEYWORDS
 from app.models.enums import Category
-from app.models.update import Update
+from app.repositories.updates import UpdateRepository
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _STOPWORDS = {
@@ -78,20 +78,15 @@ def load_entries(
     tz_offset_minutes: int = 0,
 ) -> list[JournalHit]:
     """The user's updates (newest first), optionally limited to local days [start_day, end_day] and an area."""
-    query = (
-        db.query(Update)
-        .options(selectinload(Update.events))
-        .filter(Update.user_id == user_id)
-        .order_by(Update.created_at.desc())
+    updates = UpdateRepository(db).list_for_user(
+        user_id,
+        start=local_day_bounds_utc(start_day, tz_offset_minutes)[0] if start_day else None,
+        end=local_day_bounds_utc(end_day, tz_offset_minutes)[1] if end_day else None,
     )
-    if start_day:
-        query = query.filter(Update.created_at >= local_day_bounds_utc(start_day, tz_offset_minutes)[0])
-    if end_day:
-        query = query.filter(Update.created_at < local_day_bounds_utc(end_day, tz_offset_minutes)[1])
 
     wanted = _parse_category(category)
     hits = []
-    for update in query.all():
+    for update in updates:
         categories = list(dict.fromkeys(e.category.value for e in update.events))
         if wanted and wanted not in categories:
             continue

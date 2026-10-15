@@ -11,7 +11,7 @@ import argparse
 
 from app.ai.factory import get_ai_provider
 from app.db.session import SessionLocal
-from app.models.update import Update
+from app.repositories.updates import UpdateRepository
 from app.services.event_extraction import reextract_events
 
 
@@ -22,10 +22,7 @@ def main() -> None:
 
     provider = get_ai_provider()
     with SessionLocal() as db:
-        query = db.query(Update).order_by(Update.id)
-        if args.user_id is not None:
-            query = query.filter(Update.user_id == args.user_id)
-        updates = query.all()
+        updates = UpdateRepository(db).list_all(args.user_id)
         for update in updates:
             events = reextract_events(db, update, provider)
             print(f"update {update.id}: {len(events)} statement(s)")

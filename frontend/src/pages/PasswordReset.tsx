@@ -1,8 +1,9 @@
 import { MailCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ApiError, api } from "../api/client";
-import type { Token } from "../api/types";
+import { ApiError } from "../api/client";
+import { authApi } from "../api/endpoints";
+import { errorMessage } from "../hooks/useAsync";
 import { AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../context/auth";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -19,10 +20,10 @@ export function ForgotPassword() {
     setError(null);
     setSubmitting(true);
     try {
-      await api.post("/auth/forgot-password", { email });
+      await authApi.forgotPassword(email);
       setSent(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong");
+      setError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -78,7 +79,7 @@ export function ResetPassword() {
     setError(null);
     setSubmitting(true);
     try {
-      const result = await api.post<Token>("/auth/reset-password", { token, new_password: password });
+      const result = await authApi.resetPassword(token, password);
       await loginWithToken(result.access_token);
       navigate("/dashboard", { replace: true });
     } catch (err) {

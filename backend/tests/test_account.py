@@ -3,7 +3,6 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 
-from app.api.v1 import auth as auth_api
 from app.core.config import get_settings
 from app.core.security import create_token
 from app.db.session import SessionLocal
@@ -47,10 +46,21 @@ def test_change_password_signs_out_other_sessions(client):
 
 
 @pytest.fixture
-def sent_emails(monkeypatch):
-    sent = []
-    monkeypatch.setattr(auth_api, "send_email", lambda to, subject, body: sent.append((to, body)) or True)
-    return sent
+def sent_emails(outbox):
+    """(to, body) of every email the app sent during the test."""
+
+    class View(list):
+        def __getitem__(self, i):
+            to, _subject, body = outbox.messages[i]
+            return (to, body)
+
+        def __iter__(self):
+            return iter((to, body) for to, _subject, body in outbox.messages)
+
+        def __len__(self):
+            return len(outbox.messages)
+
+    return View()
 
 
 def reset_token_from(body: str) -> str:

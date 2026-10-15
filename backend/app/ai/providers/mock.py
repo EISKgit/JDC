@@ -1,4 +1,5 @@
 import re
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Any
 
@@ -139,60 +140,88 @@ class MockProvider(AIProvider):
         return events
 
     def generate_narrative(self, *, kind: str, context: dict[str, Any]) -> str:
-        if kind == "life_profile":
-            categories = ", ".join(context.get("focus_categories", [])) or "your life areas"
-            return (
-                f"Focused on {categories}. "
-                f"Goals: {context.get('goals_text') or 'not specified yet'}. "
-                f"Current challenges: {context.get('challenges') or 'none noted'}."
+        # Period summaries ("daily_summary", "weekly_summary", ...) share one template.
+        template = NARRATIVE_TEMPLATES.get(kind, _period_summary)
+        return template(context)
+
+
+# ---------------------------------------------------------------- narrative templates
+# One small function per kind of text, looked up by name. Adding a new kind means
+# adding a function with @narrative("kind"); generate_narrative never changes
+# (open for extension, closed for modification).
+
+NarrativeTemplate = Callable[[dict[str, Any]], str]
+NARRATIVE_TEMPLATES: dict[str, NarrativeTemplate] = {}
+
+
+def narrative(kind: str) -> Callable[[NarrativeTemplate], NarrativeTemplate]:
+    def register(template: NarrativeTemplate) -> NarrativeTemplate:
+        NARRATIVE_TEMPLATES[kind] = template
+        return template
+
+    return register
+
+
+@narrative("life_profile")
+def _life_profile(context: dict[str, Any]) -> str:
+    categories = ", ".join(context.get("focus_categories", [])) or "your life areas"
+    return (
+        f"Focused on {categories}. "
+        f"Goals: {context.get('goals_text') or 'not specified yet'}. "
+        f"Current challenges: {context.get('challenges') or 'none noted'}."
+    )
+
+
+@narrative("forecast")
+def _forecast(context: dict[str, Any]) -> str:
+    category = _label(context.get("category", "this category"))
+    direction = context.get("direction", "stable")
+    horizon = context.get("horizon_days", 7)
+    if direction == "insufficient_evidence":
+        return f"Not enough data yet to forecast {category} — keep logging updates."
+    pct = context.get("pct_change")
+    pct_text = f" ({pct:+.0f}% vs. the previous period)" if pct is not None else ""
+    return (
+        f"{category.capitalize()} activity is {direction}{pct_text}. "
+        f"If this pattern continues, it is likely to remain {direction} "
+        f"over the next {horizon} days ({context.get('confidence', 'medium')} confidence)."
+    )
+
+
+@narrative("warning")
+def _warning(context: dict[str, Any]) -> str:
+    return (
+        f"{_label(context.get('category', 'This area')).capitalize()} signal: "
+        f"{context.get('negative_count', 0)} negative updates in the last "
+        f"{context.get('period_days', 14)} days. Consider reviewing recent patterns here."
+    )
+
+
+@narrative("recommendation")
+def _recommendation(context: dict[str, Any]) -> str:
+    return (
+        f"Your {_label(context.get('category', 'lowest'))} score is currently "
+        f"{context.get('score', '?')}/100 and {_trend_phrase(context.get('trend', 'stable'))}. "
+        "Consider a small, consistent action in this area this week."
+    )
+
+
+def _period_summary(context: dict[str, Any]) -> str:
+    total = context.get("total_events", 0)
+    counts: dict[str, int] = context.get("category_counts", {})
+    if not counts:
+        return f"No activity recorded for this {context.get('period', 'period')} yet."
+
+    top_category = max(counts, key=counts.get)
+    parts = [
+        f"{total} event(s) logged this {context.get('period', 'period')}, "
+        f"mostly in {_label(top_category)} ({counts[top_category]})."
+    ]
+    for cat, delta in context.get("category_deltas", {}).items():
+        if delta > 0:
+            parts.append(f"{_label(cat).capitalize()} activity increased by {delta} compared to the previous period.")
+        elif delta < 0:
+            parts.append(
+                f"{_label(cat).capitalize()} activity decreased by {abs(delta)} compared to the previous period."
             )
-
-        if kind == "forecast":
-            category = _label(context.get("category", "this category"))
-            direction = context.get("direction", "stable")
-            horizon = context.get("horizon_days", 7)
-            if direction == "insufficient_evidence":
-                return f"Not enough data yet to forecast {category} — keep logging updates."
-            pct = context.get("pct_change")
-            pct_text = f" ({pct:+.0f}% vs. the previous period)" if pct is not None else ""
-            return (
-                f"{category.capitalize()} activity is {direction}{pct_text}. "
-                f"If this pattern continues, it is likely to remain {direction} "
-                f"over the next {horizon} days ({context.get('confidence', 'medium')} confidence)."
-            )
-
-        if kind == "warning":
-            return (
-                f"{_label(context.get('category', 'This area')).capitalize()} signal: "
-                f"{context.get('negative_count', 0)} negative updates in the last "
-                f"{context.get('period_days', 14)} days. Consider reviewing recent patterns here."
-            )
-
-        if kind == "recommendation":
-            return (
-                f"Your {_label(context.get('category', 'lowest'))} score is currently "
-                f"{context.get('score', '?')}/100 and {_trend_phrase(context.get('trend', 'stable'))}. "
-                "Consider a small, consistent action in this area this week."
-            )
-
-        total = context.get("total_events", 0)
-        counts: dict[str, int] = context.get("category_counts", {})
-        if not counts:
-            return f"No activity recorded for this {context.get('period', 'period')} yet."
-
-        top_category = max(counts, key=counts.get)
-        parts = [
-            f"{total} event(s) logged this {context.get('period', 'period')}, "
-            f"mostly in {_label(top_category)} ({counts[top_category]})."
-        ]
-        deltas: dict[str, int] = context.get("category_deltas", {})
-        for cat, delta in deltas.items():
-            if delta > 0:
-                parts.append(
-                    f"{_label(cat).capitalize()} activity increased by {delta} compared to the previous period."
-                )
-            elif delta < 0:
-                parts.append(
-                    f"{_label(cat).capitalize()} activity decreased by {abs(delta)} compared to the previous period."
-                )
-        return " ".join(parts)
+    return " ".join(parts)

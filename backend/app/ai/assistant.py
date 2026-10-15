@@ -35,6 +35,8 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.enums import Category, Sentiment
 from app.models.user import User
+from app.repositories.events import EventRepository
+from app.repositories.updates import UpdateRepository
 from app.services.forecasting import compute_trend
 from app.services.journal_search import (
     JournalHit,
@@ -43,7 +45,7 @@ from app.services.journal_search import (
     search_journal,
     to_local,
 )
-from app.services.metrics import compute_category_score, events_by_category, get_events_in_range
+from app.services.metrics import compute_category_score, events_by_category
 
 logger = logging.getLogger(__name__)
 
@@ -167,9 +169,10 @@ def build_tools(db: Session, user: User, tz_offset_minutes: int) -> list[BaseToo
         previous period of the same length."""
         days = max(1, min(int(days), 90))
         now = datetime.now(UTC).replace(tzinfo=None)  # DB stores naive UTC
-        current = events_by_category(get_events_in_range(db, user.id, now - timedelta(days=days), now))
+        events = EventRepository(db)
+        current = events_by_category(events.in_range(user.id, now - timedelta(days=days), now))
         previous = events_by_category(
-            get_events_in_range(db, user.id, now - timedelta(days=2 * days), now - timedelta(days=days))
+            events.in_range(user.id, now - timedelta(days=2 * days), now - timedelta(days=days))
         )
         lines = [f"Last {days} days:"]
         for category in Category:
@@ -243,7 +246,7 @@ def _cited_ids(answer: str, db: Session, user: User) -> list[int]:
     cited = list(dict.fromkeys(int(m) for m in _CITATION_RE.findall(answer)))
     if not cited:
         return []
-    owned = {h.update_id for h in load_entries(db, user.id)}
+    owned = UpdateRepository(db).ids_for_user(user.id)
     return [i for i in cited if i in owned]
 
 

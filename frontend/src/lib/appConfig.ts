@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api/client";
+import { configApi } from "../api/endpoints";
 import type { PublicConfig } from "../api/types";
 
 let cached: Promise<PublicConfig> | null = null;
@@ -9,7 +9,7 @@ export function useAppConfig(): PublicConfig | null {
   const [config, setConfig] = useState<PublicConfig | null>(null);
   useEffect(() => {
     let active = true;
-    cached ??= api.get<PublicConfig>("/config");
+    cached ??= configApi.get();
     cached.then(
       (value) => active && isPublicConfig(value) && setConfig(value),
       () => {

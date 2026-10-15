@@ -10,13 +10,13 @@ import {
   TrendingUp,
   TriangleAlert,
 } from "lucide-react";
-import { type CSSProperties, useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, api } from "../api/client";
-import type { CategoryOption, Dashboard as DashboardData } from "../api/types";
+import { categoriesApi, dashboardApi } from "../api/endpoints";
 import { AboutJdc } from "../components/AboutJdc";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { LoadError } from "../components/Feedback";
+import { useAsync } from "../hooks/useAsync";
 import { categoryMeta } from "../lib/categories";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -89,38 +89,12 @@ function CardHeading({ Icon, children }: { Icon: LucideIcon; children: string })
 
 export function Dashboard() {
   usePageTitle("Dashboard");
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  // Bumping `attempt` (the Try again button) re-runs the load.
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const [dashboard, cats] = await Promise.all([
-          api.get<DashboardData>("/dashboard"),
-          api.get<CategoryOption[]>("/categories"),
-        ]);
-        setData(dashboard);
-        setCategories(cats);
-      } catch (err) {
-        setLoadError(err instanceof ApiError ? err.message : "Something went wrong");
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [attempt]);
-
-  function retry() {
-    setLoading(true);
-    setLoadError(null);
-    setAttempt((n) => n + 1);
-  }
+  const { data: loaded, loading, error: loadError, retry } = useAsync(async () => {
+    const [dashboard, categories] = await Promise.all([dashboardApi.get(), categoriesApi.list()]);
+    return { dashboard, categories };
+  });
+  const data = loaded?.dashboard ?? null;
+  const categories = loaded?.categories ?? [];
 
   function labelFor(value: string): string {
     return categories.find((c) => c.value === value)?.label ?? categoryMeta(value).label;

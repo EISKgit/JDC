@@ -1,19 +1,11 @@
-import logging
+from fastapi import APIRouter, Depends, status
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.ai.factory import get_ai_provider
-from app.ai.providers.base import AIProvider, AIProviderError
-from app.core.rate_limit import limit_by_user
-from app.core.security import get_current_user
-from app.db.session import get_db
+from app.api.deps import get_current_user, get_update_service
+from app.api.rate_limits import limit_by_user
 from app.models.update import Update
 from app.models.user import User
 from app.schemas.update import UpdateCreate, UpdateOut
-from app.services.event_extraction import extract_and_store_events, reextract_events
-
-logger = logging.getLogger(__name__)
+from app.services.update_service import UpdateService
 
 router = APIRouter(prefix="/updates", tags=["updates"])
 
@@ -25,23 +17,9 @@ ai_rate_limit = Depends(limit_by_user("ai"))
 def create_update(
     payload: UpdateCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    updates: UpdateService = Depends(get_update_service),
 ) -> Update:
-    # The user's raw words are the source of truth and are saved first —
-    # AI extraction is best-effort on top and must never risk losing the update.
-    update = Update(user_id=current_user.id, content=payload.content)
-    db.add(update)
-    db.commit()
-    db.refresh(update)
-
-    try:
-        extract_and_store_events(db, update, ai_provider)
-        db.refresh(update)
-    except AIProviderError:
-        logger.warning("Event extraction failed for update %s", update.id, exc_info=True)
-
-    return update
+    return updates.create(current_user, payload.content)
 
 
 @router.patch("/{update_id}", response_model=UpdateOut, dependencies=[ai_rate_limit])
@@ -49,67 +27,31 @@ def edit_update(
     update_id: int,
     payload: UpdateCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    updates: UpdateService = Depends(get_update_service),
 ) -> Update:
-    """Replace an update's text and re-extract its events from the new wording.
-
-    Statements follow the new text; categories the user fixed by hand are kept
-    for sentences that are still there (see `reextract_events`).
-    """
-    update = _get_owned_update(db, update_id, current_user)
-    update.content = payload.content
-    db.commit()
-
-    try:
-        reextract_events(db, update, ai_provider)
-    except AIProviderError:
-        logger.warning("Event extraction failed for edited update %s", update.id, exc_info=True)
-
-    return update
+    return updates.edit(current_user, update_id, payload.content)
 
 
 @router.delete("/{update_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_update(
     update_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    updates: UpdateService = Depends(get_update_service),
 ) -> None:
-    """Delete an update and every event extracted from it.
-
-    Nothing derived is stored anywhere else: scores, trends, warnings, forecasts,
-    the history and "Ask JDC" are all computed from the remaining events on
-    request, so they re-estimate as soon as this commits.
-    """
-    update = _get_owned_update(db, update_id, current_user)
-    db.delete(update)  # events go with it (cascade="all, delete-orphan")
-    db.commit()
+    updates.delete(current_user, update_id)
 
 
 @router.get("", response_model=list[UpdateOut])
 def list_updates(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user), updates: UpdateService = Depends(get_update_service)
 ) -> list[Update]:
-    return (
-        db.query(Update)
-        .filter(Update.user_id == current_user.id)
-        .order_by(Update.created_at.desc())
-        .all()
-    )
+    return updates.list(current_user)
 
 
 @router.get("/{update_id}", response_model=UpdateOut)
 def get_update(
     update_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    updates: UpdateService = Depends(get_update_service),
 ) -> Update:
-    return _get_owned_update(db, update_id, current_user)
-
-
-def _get_owned_update(db: Session, update_id: int, user: User) -> Update:
-    update = db.get(Update, update_id)
-    if update is None or update.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Update not found")
-    return update
+    return updates.get(current_user, update_id)

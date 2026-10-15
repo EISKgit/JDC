@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.errors import register_error_handlers
 from app.api.v1.router import api_router
 from app.core.config import check_security, get_settings
 from app.core.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
@@ -57,6 +58,7 @@ app.add_middleware(
 )
 app.add_middleware(SecurityHeadersMiddleware, https_only=not settings.is_development)
 
+register_error_handlers(app)  # business errors -> HTTP status codes, in one place
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 

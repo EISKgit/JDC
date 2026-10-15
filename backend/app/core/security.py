@@ -1,44 +1,65 @@
+"""Passwords and signed tokens. Pure building blocks: no HTTP, no database.
+
+The request-level "who is calling?" check (get_current_user) lives in the API
+layer (app/api/deps.py), which is the only place that knows about HTTP headers.
+"""
+
 import hashlib
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Protocol
 
 import jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.db.session import get_db
+from app.domain.errors import Unauthorized
 from app.models.user import User
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 ACCESS = "access"
 PASSWORD_RESET = "password_reset"
 GOOGLE_STATE = "google_state"
 
 
+class PasswordHasher(Protocol):
+    """What the app needs from password hashing. Services depend on this, not on bcrypt."""
+
+    def hash(self, password: str) -> str: ...
+
+    def verify(self, password: str, hashed: str) -> bool: ...
+
+    def burn(self, password: str) -> None:
+        """Take as long as `verify` without checking anything (see BcryptPasswordHasher.burn)."""
+
+
+class BcryptPasswordHasher:
+    def __init__(self) -> None:
+        self._context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self._dummy_hash: str | None = None
+
+    def hash(self, password: str) -> str:
+        return self._context.hash(password)
+
+    def verify(self, password: str, hashed: str) -> bool:
+        return self._context.verify(password, hashed)
+
+    def burn(self, password: str) -> None:
+        """Spend the same time as a real check, for logins whose email has no password.
+        Without this, "no such account" answers ~0.2s faster than "wrong password",
+        and that difference reveals which emails are registered."""
+        if self._dummy_hash is None:
+            self._dummy_hash = self.hash("timing-equalizer-not-a-real-password")
+        self._context.verify(password, self._dummy_hash)
+
+
+password_hasher = BcryptPasswordHasher()
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return password_hasher.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-_dummy_hash: str | None = None
-
-
-def burn_password_check(plain_password: str) -> None:
-    """Spend the same time as a real password check, for logins whose email has no
-    password. Without this, "no such account" answers ~0.2s faster than "wrong
-    password", and that difference reveals which emails are registered."""
-    global _dummy_hash
-    if _dummy_hash is None:
-        _dummy_hash = hash_password("timing-equalizer-not-a-real-password")
-    pwd_context.verify(plain_password, _dummy_hash)
+    return password_hasher.verify(plain_password, hashed_password)
 
 
 def password_fingerprint(user: User) -> str:
@@ -65,9 +86,9 @@ def read_token(token: str, purpose: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
     except jwt.PyJWTError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token") from exc
+        raise Unauthorized("Invalid or expired token") from exc
     if payload.get("purpose") != purpose or payload.get("sub") is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        raise Unauthorized("Invalid or expired token")
     return payload
 
 
@@ -81,13 +102,6 @@ def create_access_token(user: User) -> str:
     )
 
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
-) -> User:
-    payload = read_token(token, ACCESS)
-    user = db.get(User, int(payload["sub"]))
-    # pv: password unchanged since the token was issued; tv: not signed out everywhere since.
-    if user is None or payload.get("pv") != password_fingerprint(user) or payload.get("tv") != user.token_version:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired, please log in again")
-    return user
+def is_token_current(claims: dict[str, Any], user: User) -> bool:
+    """pv: password unchanged since the token was issued; tv: not signed out everywhere since."""
+    return claims.get("pv") == password_fingerprint(user) and claims.get("tv") == user.token_version

@@ -11,6 +11,7 @@ os.environ["AI_PROVIDER"] = "mock"
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.api.deps import get_email_sender  # noqa: E402
 from app.core.rate_limit import limiter  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.db.session import engine  # noqa: E402
@@ -23,10 +24,32 @@ def _reset_rate_limits():
     yield
 
 
+class Outbox:
+    """An EmailSender that keeps messages in memory instead of sending them."""
+
+    def __init__(self) -> None:
+        self.messages: list[tuple[str, str, str]] = []
+
+    def send(self, to: str, subject: str, body: str) -> bool:
+        self.messages.append((to, subject, body))
+        return True
+
+
+@pytest.fixture
+def outbox() -> Outbox:
+    """Swap the real email sender for an in-memory one, via FastAPI dependency overrides
+    (the services receive their sender; nothing needs monkeypatching)."""
+    fake = Outbox()
+    app.dependency_overrides[get_email_sender] = lambda: fake
+    yield fake
+    app.dependency_overrides.pop(get_email_sender, None)
+
+
 @pytest.fixture
 def client():
     with TestClient(app) as test_client:  # startup runs the migrations
         yield test_client
+    app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
     with engine.begin() as connection:
         # Forget the migration history too, so the next test migrates a truly empty DB.

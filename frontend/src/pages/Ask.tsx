@@ -1,8 +1,9 @@
 import { ArrowUpRight, MessageCircleQuestion, RotateCcw, SendHorizontal } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, api } from "../api/client";
-import type { AskResponse, ChatTurn, UpdateItem } from "../api/types";
+import { assistantApi } from "../api/endpoints";
+import type { ChatTurn, UpdateItem } from "../api/types";
+import { errorMessage } from "../hooks/useAsync";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { PrivacyNote } from "../components/Feedback";
 import { dayKey, longDate, relativeDayLabel, timeOfDay } from "../lib/dates";
@@ -93,17 +94,13 @@ export function Ask() {
     setQuestion("");
     setAsking(true);
     try {
-      const reply = await api.post<AskResponse>("/assistant/ask", {
-        question: q,
-        history,
-        tz_offset_minutes: new Date().getTimezoneOffset(),
-      });
+      const reply = await assistantApi.ask(q, history, new Date().getTimezoneOffset());
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: reply.answer, sources: reply.sources, usedAi: reply.used_ai },
       ]);
     } catch (err) {
-      const detail = err instanceof ApiError ? err.message : "Something went wrong";
+      const detail = errorMessage(err);
       setMessages((prev) => [...prev, { role: "assistant", content: `Couldn't get an answer: ${detail}`, error: true }]);
     } finally {
       setAsking(false);

@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
-import { ApiError, api, getToken, setToken } from "../api/client";
+import { ApiError, getToken, setToken } from "../api/client";
+import { authApi } from "../api/endpoints";
 import type { User } from "../api/types";
 
 export interface AuthContextValue {
@@ -33,7 +34,7 @@ export interface LoginCheck {
 export async function checkLogin(): Promise<LoginCheck> {
   if (!getToken()) return { user: null, error: null };
   try {
-    return { user: await api.get<User>("/auth/me"), error: null };
+    return { user: await authApi.me(), error: null };
   } catch (err) {
     // Only a rejected token means "signed out" (the client already cleared it on 401).
     // Anything else, like the server being unreachable, must not throw the login away.

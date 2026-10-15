@@ -5,11 +5,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.v1 import auth as auth_api
+from app.api.deps import get_password_hasher
 from app.core.config import get_settings
 from app.core.middleware import SecurityHeadersMiddleware
 from app.core.passwords import password_problem
-from app.services import email as email_service
+from app.services.notifications import LogEmailSender, email_sender_from_settings
 
 API = "/api/v1"
 
@@ -97,11 +97,28 @@ def test_profile_text_sent_to_the_ai_is_bounded(client):
 # ------------------------------------------------------------ login hardening
 
 
-def test_unknown_email_takes_as_long_as_a_wrong_password(client, monkeypatch):
-    calls = []
-    monkeypatch.setattr(auth_api, "burn_password_check", lambda password: calls.append(password))
+def test_unknown_email_takes_as_long_as_a_wrong_password(client):
+    from app.core.security import password_hasher
+
+    class SpyHasher:
+        """Wraps the real hasher and records when the timing-equalizer runs."""
+
+        def __init__(self):
+            self.burned = []
+
+        def hash(self, password):
+            return password_hasher.hash(password)
+
+        def verify(self, password, hashed):
+            return password_hasher.verify(password, hashed)
+
+        def burn(self, password):
+            self.burned.append(password)
+
+    spy = SpyHasher()
+    client.app.dependency_overrides[get_password_hasher] = lambda: spy  # the app this client talks to
     assert login(client, "whatever-pw", email="nobody@example.com").status_code == 401
-    assert calls == ["whatever-pw"]  # a full bcrypt check still ran
+    assert spy.burned == ["whatever-pw"]  # a full bcrypt-time check still ran
 
 
 def test_account_locks_after_repeated_wrong_passwords(client):
@@ -126,16 +143,14 @@ def test_successful_login_resets_the_failure_count(client):
     assert [login(client, f"wrong-again-{i}").status_code for i in range(4)] == [401] * 4
 
 
-def test_password_reset_lifts_a_lockout(client, monkeypatch):
-    sent = []
-    monkeypatch.setattr(auth_api, "send_email", lambda to, subject, body: sent.append(body) or True)
+def test_password_reset_lifts_a_lockout(client, outbox):
     register(client)
     for i in range(5):
         login(client, f"wrong-{i}")
     assert login(client, "correct-horse").status_code == 429
 
     client.post(f"{API}/auth/forgot-password", json={"email": "sec@example.com"})
-    token = sent[0].split("token=")[1].split()[0]
+    token = outbox.messages[0][2].split("token=")[1].split()[0]
     client.post(f"{API}/auth/reset-password", json={"token": token, "new_password": "fresh-secret-9"})
     assert login(client, "fresh-secret-9").status_code == 200
 
@@ -205,8 +220,10 @@ def test_logout_all_invalidates_every_other_session(client):
 def test_reset_links_never_reach_production_logs(monkeypatch, caplog):
     monkeypatch.setattr(get_settings(), "environment", "production")
     monkeypatch.setattr(get_settings(), "smtp_host", "")
+    sender = email_sender_from_settings(get_settings())
+    assert isinstance(sender, LogEmailSender)
     with caplog.at_level(logging.WARNING):
-        email_service.send_email("a@example.com", "Reset your JDC password", "secret link: token=abc123")
+        sender.send("a@example.com", "Reset your JDC password", "secret link: token=abc123")
     assert "token=abc123" not in caplog.text
     assert "could not send" in caplog.text
 
@@ -214,5 +231,12 @@ def test_reset_links_never_reach_production_logs(monkeypatch, caplog):
 def test_reset_links_are_logged_for_local_development(monkeypatch, caplog):
     monkeypatch.setattr(get_settings(), "smtp_host", "")
     with caplog.at_level(logging.WARNING):
-        email_service.send_email("a@example.com", "Reset", "token=abc123")
+        email_sender_from_settings(get_settings()).send("a@example.com", "Reset", "token=abc123")
     assert "token=abc123" in caplog.text
+
+
+def test_smtp_is_used_when_configured(monkeypatch):
+    from app.services.notifications import SmtpEmailSender
+
+    monkeypatch.setattr(get_settings(), "smtp_host", "smtp.example.com")
+    assert isinstance(email_sender_from_settings(get_settings()), SmtpEmailSender)

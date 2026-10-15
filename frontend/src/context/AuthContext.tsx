@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { SESSION_EXPIRED_EVENT, api, setToken } from "../api/client";
-import type { Token, User } from "../api/types";
+import { SESSION_EXPIRED_EVENT, setToken } from "../api/client";
+import { authApi } from "../api/endpoints";
+import type { User } from "../api/types";
 import { clearAskHistory } from "../lib/askHistory";
 import { AuthContext, type LoginCheck, checkLogin } from "./auth";
 
@@ -41,16 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function login(email: string, password: string) {
-    const token = await api.post<Token>("/auth/login", { email, password });
+    const token = await authApi.login(email, password);
     await loginWithToken(token.access_token);
   }
 
   async function register(email: string, password: string, fullName?: string) {
-    const token = await api.post<Token>("/auth/register", {
-      email,
-      password,
-      full_name: fullName || null,
-    });
+    const token = await authApi.register(email, password, fullName || null);
     await loginWithToken(token.access_token);
   }
 

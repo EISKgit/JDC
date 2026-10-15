@@ -1,19 +1,9 @@
-from collections import Counter
-from datetime import datetime
+"""Deterministic scoring: pure functions over events, no database or AI access."""
 
-from sqlalchemy.orm import Session
+from collections import Counter
 
 from app.models.enums import Category, Sentiment
 from app.models.event import Event
-
-
-def get_events_in_range(db: Session, user_id: int, start: datetime, end: datetime) -> list[Event]:
-    return (
-        db.query(Event)
-        .filter(Event.user_id == user_id, Event.created_at >= start, Event.created_at < end)
-        .order_by(Event.created_at)
-        .all()
-    )
 
 
 def category_counts(events: list[Event]) -> dict[str, int]:

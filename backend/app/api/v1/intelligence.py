@@ -1,13 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends
 
-from app.ai.factory import get_ai_provider
-from app.ai.providers.base import AIProvider
-from app.core.security import get_current_user
-from app.db.session import get_db
+from app.api.deps import get_current_user, get_intelligence_service
+from app.domain.errors import InvalidInput
 from app.models.user import User
 from app.schemas.intelligence import DashboardOut, ForecastOut, PeriodSummary
-from app.services.intelligence import generate_dashboard, generate_forecasts, generate_period_summary
+from app.services.intelligence import IntelligenceService
 
 router = APIRouter(tags=["intelligence"])
 
@@ -15,46 +12,41 @@ router = APIRouter(tags=["intelligence"])
 @router.get("/intelligence/daily", response_model=PeriodSummary)
 def daily_intelligence(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    intelligence: IntelligenceService = Depends(get_intelligence_service),
 ) -> PeriodSummary:
-    return generate_period_summary(db, current_user, "daily", ai_provider)
+    return intelligence.period_summary(current_user, "daily")
 
 
 @router.get("/intelligence/weekly", response_model=PeriodSummary)
 def weekly_intelligence(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    intelligence: IntelligenceService = Depends(get_intelligence_service),
 ) -> PeriodSummary:
-    return generate_period_summary(db, current_user, "weekly", ai_provider)
+    return intelligence.period_summary(current_user, "weekly")
 
 
 @router.get("/intelligence/monthly", response_model=PeriodSummary)
 def monthly_intelligence(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    intelligence: IntelligenceService = Depends(get_intelligence_service),
 ) -> PeriodSummary:
-    return generate_period_summary(db, current_user, "monthly", ai_provider)
+    return intelligence.period_summary(current_user, "monthly")
 
 
 @router.get("/intelligence/forecast", response_model=list[ForecastOut])
 def forecast(
     horizon: int = 7,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    intelligence: IntelligenceService = Depends(get_intelligence_service),
 ) -> list[ForecastOut]:
     if horizon not in (7, 30):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="horizon must be 7 or 30")
-    return generate_forecasts(db, current_user, ai_provider, horizon_days=horizon)
+        raise InvalidInput("horizon must be 7 or 30")
+    return intelligence.forecasts(current_user, horizon_days=horizon)
 
 
 @router.get("/dashboard", response_model=DashboardOut)
 def dashboard(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    intelligence: IntelligenceService = Depends(get_intelligence_service),
 ) -> DashboardOut:
-    return generate_dashboard(db, current_user, ai_provider)
+    return intelligence.dashboard(current_user)
