@@ -39,7 +39,7 @@ export function Login() {
       <form className="auth-card" onSubmit={handleSubmit}>
         <h2>Welcome back</h2>
         <p className="auth-subtitle">Log in to see how your week is going.</p>
-        {expired && !error && <p className="form-notice">Your session expired. Please log in again.</p>}
+        {expired && !error && <p className="form-notice" role="status">Your session expired. Please log in again.</p>}
         <GoogleButton />
         <label>
           Email
@@ -59,7 +59,7 @@ export function Login() {
             required
           />
         </label>
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? "Logging in..." : "Log in"}
         </button>

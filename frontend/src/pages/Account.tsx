@@ -61,7 +61,7 @@ export function Account() {
         </h2>
         <PrivacyNote compact />
         <p>Download everything JDC stores about you (profile, goals, updates and statements) as one JSON file.</p>
-        {exportError && <p className="form-error">{exportError}</p>}
+        {exportError && <p className="form-error" role="alert">{exportError}</p>}
         <button type="button" className="btn-secondary" onClick={handleExport} disabled={exporting}>
           <Download size={16} aria-hidden="true" />
           {exporting ? "Preparing..." : "Export my data"}

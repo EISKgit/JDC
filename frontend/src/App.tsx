@@ -2,7 +2,9 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ErrorBoundary } from "./components/Feedback";
 import { NavBar } from "./components/NavBar";
+import { PageSkeleton } from "./components/PageSkeleton";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RouteFocus } from "./components/RouteFocus";
 import { useAuth } from "./context/auth";
 
 // Each page is its own download, fetched the first time it's visited, so the first
@@ -24,10 +26,14 @@ function App() {
 
   return (
     <>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
       <NavBar />
-      <main>
+      <RouteFocus />
+      <main id="main" tabIndex={-1}>
         <ErrorBoundary>
-          <Suspense fallback={<div className="page-center">Loading...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <Routes>
               <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
               <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />

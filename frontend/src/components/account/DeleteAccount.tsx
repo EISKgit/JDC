@@ -52,7 +52,7 @@ export function DeleteAccount() {
             Type DELETE to confirm
             <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" required />
           </label>
-          {error && <p className="form-error">{error}</p>}
+          {error && <p className="form-error" role="alert">{error}</p>}
           <div className="delete-confirm-actions">
             <button type="button" className="btn-secondary" onClick={() => setOpen(false)} disabled={deleting}>
               Cancel

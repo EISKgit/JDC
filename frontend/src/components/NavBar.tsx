@@ -1,7 +1,8 @@
-import { LayoutDashboard, MessageCircleQuestion, NotebookPen, Target, UserRound } from "lucide-react";
+import { LayoutDashboard, LogOut, MessageCircleQuestion, NotebookPen, Target, UserRound } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth";
 import { Logo } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
 const LINKS = [
   { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -40,14 +41,16 @@ export function NavBar() {
           ))}
         </div>
         <span className="navbar-spacer" />
+        <ThemeToggle />
         <Link to="/account" className="navbar-user" title={`${user.email} - account settings`}>
           <span className="avatar" aria-hidden="true">
             {displayName.charAt(0).toUpperCase()}
           </span>
           <span className="navbar-user-name">{displayName}</span>
         </Link>
-        <button type="button" className="btn-secondary btn-small" onClick={handleLogout}>
-          Log out
+        <button type="button" className="btn-secondary btn-small navbar-logout" onClick={handleLogout}>
+          <LogOut size={14} aria-hidden="true" />
+          <span className="navbar-logout-label">Log out</span>
         </button>
       </div>
     </nav>

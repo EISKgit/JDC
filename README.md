@@ -354,6 +354,8 @@ ILC/
 │   │   ├── ProtectedRoute.test.tsx  login redirect
 │   │   ├── Dashboard.test.tsx         "—" empty state, real scores, JDC guide
 │   │   ├── Updates.test.tsx             date-wise history: grouping, chips, date picker
+│   │   ├── ui-polish.test.tsx           theme switch, focus on navigation, time range, history search
+│   │   ├── accessibility.test.tsx       axe-core check of every page (WCAG 2.1 AA)
 │   │   ├── dates.test.ts                  day keys, Today/Yesterday, streaks
 │   │   └── no-emoji.test.ts                 fails if an emoji appears in src/ or index.html
 │   └── src/
@@ -363,6 +365,8 @@ ILC/
 │       ├── lib/
 │       │   ├── categories.ts            icon + accent color per life area
 │       │   ├── dates.ts                   local-day grouping, labels, streak
+│       │   ├── theme.ts                   light / dark / system theme, remembered per browser
+│       │   ├── overview.ts                dashboard data for Today / 7 days / 30 days
 │       │   └── appConfig.ts                 useAppConfig(): GET /config once
 │       ├── api/
 │       │   ├── client.ts                fetch wrapper: JWT, errors, expired sessions, downloads
@@ -377,6 +381,9 @@ ILC/
 │       │   ├── ProtectedRoute.tsx             redirects to /login if signed out (retry if offline)
 │       │   ├── Feedback.tsx                     LoadError, ErrorBoundary, PrivacyNote, GoogleButton
 │       │   ├── NavBar.tsx                       sticky top navigation
+│       │   ├── ThemeToggle.tsx                  System -> Light -> Dark switch in the top bar
+│       │   ├── PageSkeleton.tsx                 loading placeholder shaped like the page
+│       │   ├── RouteFocus.tsx                   moves focus to the page content after navigation
 │       │   ├── AboutJdc.tsx                       "JDC at a glance": flow diagram + screen map
 │       │   ├── CategoryIcon.tsx                     a life area's icon in its accent color
 │       │   ├── AuthLayout.tsx                       two-panel login/signup layout
@@ -531,14 +538,18 @@ A full walkthrough of the product loop, using either the UI at
 5. **Look back through your history** — below the update box, entries are grouped
    by day (*Today*, *Yesterday*, then full dates), each day showing which life
    areas it touched. Click a day chip to see just that day, or use **Jump to date**
-   to pick any date; **Show all days** returns to the full list. The header shows
+   to pick any date; **Show all days** returns to the full list. **Search updates**
+   filters the history to entries whose text, or any statement JDC extracted from
+   them, contains the words you type. The header shows
    your total entries, days logged, and current daily streak. Days follow your
    local timezone. **Summarize day** under a date asks the AI for a 2-3 sentence
    summary of that day.
-6. **Check the dashboard** at `/dashboard` — overall score, per-category scores
+6. **Check the dashboard** at `/dashboard` — choose **Today**, **7 days** (default) or
+   **30 days** at the top (the choice is kept in the address, e.g. `?range=month`).
+   It shows the overall score, per-category scores
    with trend arrows, the week's top observation, any warnings (e.g. repeated
-   negative-sentiment events in one category), a recommendation, and a 7-day
-   forecast per category. A brand-new account shows **"—"** instead of scores and
+   negative-sentiment events in one category), a recommendation (7-day view), and a
+   7- or 30-day forecast per category. A brand-new account shows **"—"** instead of scores and
    a "log your first update" prompt until there's activity; categories you haven't
    logged anything in yet stay "—". The **JDC at a glance** guide at the top
    shows it visually: a 4-step flow diagram (Write → Split → Sort → See) with an
@@ -552,10 +563,12 @@ A full walkthrough of the product loop, using either the UI at
    *"went to the gym"* because both are Health.
 8. **Goals** at `/goals`: add goals in a life area, mark them done or archive them.
    Each active goal shows how many entries you logged in its area this week.
-9. **Account** (click your name in the top bar): change or set a password, export
+9. **Theme**: the button in the top bar switches System → Light → Dark; the choice
+   is remembered in this browser. **Tab** on any page first offers *Skip to content*.
+10. **Account** (click your name in the top bar): change or set a password, export
    all your data as JSON, or permanently delete your account. Changing the password
    signs you out on other devices.
-10. Keep logging updates over multiple days — scores, trends, and forecasts become
+11. Keep logging updates over multiple days — scores, trends, and forecasts become
     more meaningful as more evidence accumulates (a single day of data will
     correctly show "not enough data" for most trends, by design).
 

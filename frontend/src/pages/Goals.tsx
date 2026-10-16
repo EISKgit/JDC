@@ -7,6 +7,7 @@ import { GoalCard } from "../components/goals/GoalCard";
 import { errorMessage, useAsync } from "../hooks/useAsync";
 import { weeklyActivity } from "../lib/goals";
 import { usePageTitle } from "../lib/usePageTitle";
+import { PageSkeleton } from "../components/PageSkeleton";
 
 const SECTIONS: { status: GoalStatus; title: string }[] = [
   { status: "active", title: "Active" },
@@ -56,7 +57,7 @@ export function Goals() {
   }
 
   if (loadError) return <LoadError message={loadError} onRetry={retry} />;
-  if (loading) return <div className="page-center">Loading...</div>;
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="page">
@@ -98,7 +99,7 @@ export function Goals() {
             maxLength={2000}
           />
         </label>
-        {formError && <p className="form-error">{formError}</p>}
+        {formError && <p className="form-error" role="alert">{formError}</p>}
         <button type="submit" className="btn-primary" disabled={saving || !title.trim()}>
           {saving ? "Adding..." : "Add goal"}
         </button>

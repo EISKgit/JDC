@@ -1,4 +1,4 @@
-import { CalendarX, Flame, NotebookPen } from "lucide-react";
+import { CalendarX, Flame, NotebookPen, Search, SearchX } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { categoriesApi, updatesApi } from "../api/endpoints";
@@ -12,6 +12,14 @@ import { currentStreak, dayKey, groupByDay, longDate, relativeDayLabel, shortDat
 import { usePageTitle } from "../lib/usePageTitle";
 
 const RECENT_DAY_CHIPS = 10;
+
+/** Case-insensitive match on what was written or on any statement JDC extracted from it. */
+function matchesQuery(update: UpdateItem, needle: string): boolean {
+  return (
+    update.content.toLowerCase().includes(needle) ||
+    update.events.some((e) => e.description.toLowerCase().includes(needle))
+  );
+}
 
 export function Updates() {
   usePageTitle("Updates");
@@ -33,9 +41,19 @@ export function Updates() {
     return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
   });
 
+  const [query, setQuery] = useState("");
+
   const days = useMemo(() => groupByDay(updates), [updates]);
   const streak = useMemo(() => currentStreak(days.map((d) => d.key)), [days]);
-  const visibleDays = selectedDay ? days.filter((d) => d.key === selectedDay) : days;
+  const visibleDays = useMemo(() => {
+    const byDay = selectedDay ? days.filter((d) => d.key === selectedDay) : days;
+    const needle = query.trim().toLowerCase();
+    if (!needle) return byDay;
+    return byDay
+      .map((d) => ({ ...d, items: d.items.filter((u) => matchesQuery(u, needle)) }))
+      .filter((d) => d.items.length > 0);
+  }, [days, selectedDay, query]);
+  const matchCount = visibleDays.reduce((sum, d) => sum + d.items.length, 0);
   const today = dayKey(new Date());
 
   async function submit() {
@@ -96,7 +114,7 @@ export function Updates() {
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        {submitError && <p className="form-error">{submitError}</p>}
+        {submitError && <p className="form-error" role="alert">{submitError}</p>}
         <div className="compose-footer">
           <span className="hint">One sentence per thing that happened · Ctrl + Enter to save</span>
           <button type="submit" className="btn-primary" disabled={submitting || !content.trim()}>
@@ -106,7 +124,9 @@ export function Updates() {
       </form>
 
       {loading ? (
-        <div className="page-center">Loading...</div>
+        <div className="skeleton skeleton-block" role="status" aria-busy="true">
+          <span className="sr-only">Loading</span>
+        </div>
       ) : (
         <section className="history" aria-labelledby="history-heading">
           <div className="history-header">
@@ -124,6 +144,16 @@ export function Updates() {
               </p>
             </div>
             <div className="history-controls">
+              <div className="history-search">
+                <Search size={16} aria-hidden="true" />
+                <input
+                  type="search"
+                  aria-label="Search your updates"
+                  placeholder="Search updates"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
               <label className="date-picker">
                 <span>Jump to date</span>
                 <input
@@ -173,7 +203,22 @@ export function Updates() {
             </div>
           )}
 
-          {selectedDay && visibleDays.length === 0 && (
+          {query.trim() && (
+            <p className="history-stats" role="status">
+              {matchCount === 0 ? (
+                <>
+                  <SearchX size={14} aria-hidden="true" /> No entries match "{query.trim()}"
+                  {selectedDay ? ` on ${longDate(selectedDay)}` : ""}.
+                </>
+              ) : (
+                <>
+                  <strong>{matchCount}</strong> {matchCount === 1 ? "entry matches" : "entries match"} "{query.trim()}"
+                </>
+              )}
+            </p>
+          )}
+
+          {selectedDay && !query.trim() && visibleDays.length === 0 && (
             <div className="card empty-card">
               <CalendarX className="empty-icon" size={28} aria-hidden="true" />
               <p>No entries on {longDate(selectedDay)}.</p>

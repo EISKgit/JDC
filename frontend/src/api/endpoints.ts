@@ -14,10 +14,12 @@ import type {
   ChatTurn,
   Dashboard,
   DaySummary,
+  ForecastItem,
   EventItem,
   Goal,
   GoalStatus,
   LifeProfile,
+  PeriodSummary,
   PublicConfig,
   Token,
   UpdateItem,
@@ -87,6 +89,11 @@ export const goalsApi = {
 
 export const dashboardApi = {
   get: () => api.get<Dashboard>("/dashboard"),
+};
+
+export const intelligenceApi = {
+  summary: (period: "daily" | "weekly" | "monthly") => api.get<PeriodSummary>(`/intelligence/${period}`),
+  forecast: (horizonDays: 7 | 30) => api.get<ForecastItem[]>(`/intelligence/forecast?horizon=${horizonDays}`),
 };
 
 export const assistantApi = {

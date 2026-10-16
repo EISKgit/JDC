@@ -57,7 +57,7 @@ export function ChangePassword() {
         />
         <span className="field-hint">8–72 characters, not a common password</span>
       </label>
-      {message && <p className={message.ok ? "form-success" : "form-error"}>{message.text}</p>}
+      {message && <p className={message.ok ? "form-success" : "form-error"} role={message.ok ? "status" : "alert"}>{message.text}</p>}
       <button type="submit" className="btn-primary" disabled={saving}>
         {saving ? "Saving..." : "Save password"}
       </button>

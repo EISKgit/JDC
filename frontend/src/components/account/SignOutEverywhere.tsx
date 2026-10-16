@@ -34,7 +34,7 @@ export function SignOutEverywhere() {
         Lost a phone or used a shared computer? This signs out everywhere except here. Changing your password does
         the same.
       </p>
-      {message && <p className={message.ok ? "form-success" : "form-error"}>{message.text}</p>}
+      {message && <p className={message.ok ? "form-success" : "form-error"} role={message.ok ? "status" : "alert"}>{message.text}</p>}
       <button type="button" className="btn-secondary" onClick={handleClick} disabled={busy}>
         {busy ? "Signing out..." : "Sign out of all other devices"}
       </button>

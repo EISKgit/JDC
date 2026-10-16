@@ -11,14 +11,16 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import type { CSSProperties } from "react";
-import { Link } from "react-router-dom";
-import { categoriesApi, dashboardApi } from "../api/endpoints";
+import { Link, useSearchParams } from "react-router-dom";
+import { categoriesApi } from "../api/endpoints";
 import { AboutJdc } from "../components/AboutJdc";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { LoadError } from "../components/Feedback";
 import { useAsync } from "../hooks/useAsync";
 import { categoryMeta } from "../lib/categories";
+import { RANGES, type Range, loadOverview, parseRange } from "../lib/overview";
 import { usePageTitle } from "../lib/usePageTitle";
+import { PageSkeleton } from "../components/PageSkeleton";
 
 const TREND_ICON: Record<string, LucideIcon> = {
   improving: TrendingUp,
@@ -89,41 +91,57 @@ function CardHeading({ Icon, children }: { Icon: LucideIcon; children: string })
 
 export function Dashboard() {
   usePageTitle("Dashboard");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const range = parseRange(searchParams.get("range"));
   const { data: loaded, loading, error: loadError, retry } = useAsync(async () => {
-    const [dashboard, categories] = await Promise.all([dashboardApi.get(), categoriesApi.list()]);
-    return { dashboard, categories };
-  });
-  const data = loaded?.dashboard ?? null;
+    const [overview, categories] = await Promise.all([loadOverview(range), categoriesApi.list()]);
+    return { overview, categories };
+  }, [range]);
+  const data = loaded?.overview ?? null;
   const categories = loaded?.categories ?? [];
+  const meta = RANGES[range];
+
+  function chooseRange(next: Range) {
+    // In the address bar, so back/forward and shared links keep the chosen range.
+    setSearchParams(next === "week" ? {} : { range: next }, { replace: true });
+  }
 
   function labelFor(value: string): string {
     return categories.find((c) => c.value === value)?.label ?? categoryMeta(value).label;
   }
 
   if (loadError) return <LoadError message={loadError} onRetry={retry} />;
-  if (loading || !data) return <div className="page-center">Loading...</div>;
+  if (loading || !data) return <PageSkeleton variant="grid" />;
 
   // With no events every score is just the neutral baseline of 50, which
   // reads like a real middle-of-the-road result. Show "—" instead.
-  const hasData = data.category_scores.some((cs) => cs.event_count > 0);
-  const totalEvents = data.category_scores.reduce((sum, cs) => sum + cs.event_count, 0);
+  const hasData = data.categoryScores.some((cs) => cs.event_count > 0);
+  const totalEvents = data.categoryScores.reduce((sum, cs) => sum + cs.event_count, 0);
 
   return (
     <div className="page page-wide">
       <header className="page-header">
         <p className="eyebrow">{greeting()}</p>
         <h1>Your Life Overview</h1>
-        <p className="page-subtitle">A snapshot of the last 7 days, built only from what you logged.</p>
+        <p className="page-subtitle">A snapshot of {meta.span}, built only from what you logged.</p>
       </header>
 
       <AboutJdc defaultOpen={!hasData} />
 
+      <div className="segmented" role="group" aria-label="Time range">
+        {(Object.keys(RANGES) as Range[]).map((r) => (
+          <button key={r} type="button" aria-pressed={r === range} onClick={() => chooseRange(r)}>
+            {RANGES[r].tab}
+          </button>
+        ))}
+      </div>
+
       <section className="card hero-card overall-score">
-        <ScoreRing score={data.overall_score} hasData={hasData} />
+        <ScoreRing score={data.overallScore} hasData={hasData} />
         <div className="hero-text">
           <span className="overall-score-label">
             {hasData ? (
-              "Overall score (last 7 days)"
+              meta.scoreLabel
             ) : (
               <>
                 No data yet. <Link to="/updates">log your first update</Link> to get your score
@@ -132,7 +150,7 @@ export function Dashboard() {
           </span>
           {hasData && (
             <p className="hero-meta">
-              Based on <strong>{totalEvents}</strong> {totalEvents === 1 ? "event" : "events"} this week. Focus areas
+              Based on <strong>{totalEvents}</strong> {totalEvents === 1 ? "event" : "events"} {meta.countSuffix}. Focus areas
               from your Life Profile count 1.5×.
             </p>
           )}
@@ -144,7 +162,7 @@ export function Dashboard() {
       </section>
 
       <div className="score-grid">
-        {data.category_scores.map((cs) => {
+        {data.categoryScores.map((cs) => {
           const empty = cs.event_count === 0;
           return (
             <div
@@ -178,13 +196,15 @@ export function Dashboard() {
       <div className="insight-grid">
         <div className="card insight-card">
           <CardHeading Icon={Search}>Most important observation</CardHeading>
-          <p>{data.top_observation}</p>
+          <p>{data.observation}</p>
         </div>
 
-        <div className="card insight-card insight-accent">
-          <CardHeading Icon={Lightbulb}>Recommended focus</CardHeading>
-          <p>{data.recommendation}</p>
-        </div>
+        {data.recommendation && (
+          <div className="card insight-card insight-accent">
+            <CardHeading Icon={Lightbulb}>Recommended focus</CardHeading>
+            <p>{data.recommendation}</p>
+          </div>
+        )}
       </div>
 
       {data.warnings.length > 0 && (
@@ -199,9 +219,9 @@ export function Dashboard() {
       )}
 
       <div className="card">
-        <CardHeading Icon={Telescope}>7-Day Outlook</CardHeading>
+        <CardHeading Icon={Telescope}>{`${data.forecastDays}-Day Outlook`}</CardHeading>
         <ul className="forecast-list">
-          {data.forecast_7day.map((f) => (
+          {data.forecast.map((f) => (
             <li key={f.category}>
               <span className="forecast-icon">
                 <CategoryIcon category={f.category} size={18} />

@@ -34,10 +34,12 @@ src/
 ├── context/       auth state (JWT in localStorage); useAuth() in context/auth.ts
 ├── hooks/         useAsync: load / error / retry for page data
 ├── components/     shared UI, plus per-feature folders: updates/, goals/, account/, profile/
-├── lib/            category icons/colors, dates, public app config, page titles, Ask history
+├── lib/            category icons/colors, dates, public app config, page titles, Ask history,
+                    theme (light/dark/system), dashboard time ranges (overview.ts)
 └── pages/            Login, Signup, password reset, Google callback, Onboarding,
                     Updates, Goals, Ask, Account, Dashboard
-tests/            Vitest suite (every page, API client, dates, no-emoji); helpers.ts mocks the API
+tests/            Vitest suite (every page, API client, dates, no-emoji, axe accessibility);
+                    helpers.ts mocks the API
 ```
 
 ## Conventions
@@ -56,3 +58,17 @@ tests/            Vitest suite (every page, API client, dates, no-emoji); helper
   retry, setData }`, and render `<LoadError onRetry={retry}>` on error.
 - **One job per component:** pages orchestrate; anything with its own state or logic
   (a card, a form section) goes in `components/<feature>/`.
+- **Loading states:** show `<PageSkeleton />` (or `variant="grid"`) instead of a
+  "Loading..." line. It has `role="status"`, so screen readers hear "Loading".
+- **Messages:** errors get `role="alert"`, confirmations `role="status"`, so they are
+  announced without moving focus.
+- **Colors:** use the CSS tokens in `index.css` (`--text`, `--surface`, `--primary`...).
+  Each has a light and dark value; `<html data-theme="light|dark">` (set by the theme
+  button, `lib/theme.ts`) overrides the system setting. Colored text is mixed towards
+  `--ink-mix` so it keeps WCAG AA contrast in both themes.
+- **Accessibility:** `tests/accessibility.test.tsx` runs axe-core over every page; add
+  a new page to it. Icon-only buttons need an `aria-label`. On narrow screens, hide
+  labels visually (the `clip-path` pattern in `index.css`), never with
+  `display: none`, so the control keeps its accessible name.
+- **Page changes:** `RouteFocus` moves focus to `<main id="main">` after navigation, and
+  a "Skip to content" link is the first Tab stop.

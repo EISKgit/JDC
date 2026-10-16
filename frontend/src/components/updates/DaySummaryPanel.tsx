@@ -32,7 +32,7 @@ export function DaySummaryPanel({ dayKey: key }: { dayKey: string }) {
           <FileText size={13} aria-hidden="true" />
           {loading ? "Summarizing..." : "Summarize day"}
         </button>
-        {error && <span className="form-error">{error}</span>}
+        {error && <span className="form-error" role="alert">{error}</span>}
       </div>
     );
   }

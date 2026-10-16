@@ -75,7 +75,7 @@ export function ProfileForm({ categories, initial }: { categories: CategoryOptio
           <textarea rows={2} value={challenges} onChange={(e) => setChallenges(e.target.value)} />
         </label>
 
-        {saveError && <p className="form-error">{saveError}</p>}
+        {saveError && <p className="form-error" role="alert">{saveError}</p>}
         <button type="submit" className="btn-primary" disabled={saving}>
           {saving ? "Saving..." : "Save Life Profile"}
         </button>

@@ -109,7 +109,7 @@ export function UpdateCard({
               ` and its ${update.events.length} ${update.events.length === 1 ? "statement" : "statements"}`}
             ? Your scores, trends and insights will be recalculated without it.
           </p>
-          {deleteError && <p className="form-error">{deleteError}</p>}
+          {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
           <div className="delete-confirm-actions">
             <button
               type="button"

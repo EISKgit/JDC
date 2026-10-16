@@ -45,7 +45,7 @@ export function ForgotPassword() {
               Email
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </label>
-            {error && <p className="form-error">{error}</p>}
+            {error && <p className="form-error" role="alert">{error}</p>}
             <button type="submit" className="btn-primary" disabled={submitting}>
               {submitting ? "Sending..." : "Send reset link"}
             </button>
@@ -99,7 +99,7 @@ export function ResetPassword() {
       <form className="auth-card" onSubmit={handleSubmit}>
         <h2>Choose a new password</h2>
         {!token ? (
-          <p className="form-error">This link is incomplete. Request a new one below.</p>
+          <p className="form-error" role="alert">This link is incomplete. Request a new one below.</p>
         ) : (
           <>
             <p className="auth-subtitle">You'll be signed in right after.</p>
@@ -119,7 +119,7 @@ export function ResetPassword() {
               Confirm new password
               <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
             </label>
-            {error && <p className="form-error">{error}</p>}
+            {error && <p className="form-error" role="alert">{error}</p>}
             <button type="submit" className="btn-primary" disabled={submitting}>
               {submitting ? "Saving..." : "Save password"}
             </button>

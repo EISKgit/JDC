@@ -3,6 +3,7 @@ import { LoadError, PrivacyNote } from "../components/Feedback";
 import { ProfileForm } from "../components/profile/ProfileForm";
 import { useAsync } from "../hooks/useAsync";
 import { usePageTitle } from "../lib/usePageTitle";
+import { PageSkeleton } from "../components/PageSkeleton";
 
 export function Onboarding() {
   usePageTitle("Life Profile");
@@ -12,7 +13,7 @@ export function Onboarding() {
   });
 
   if (error) return <LoadError message={error} onRetry={retry} />;
-  if (loading || !data) return <div className="page-center">Loading...</div>;
+  if (loading || !data) return <PageSkeleton />;
 
   return (
     <div className="page">

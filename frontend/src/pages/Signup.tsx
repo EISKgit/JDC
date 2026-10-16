@@ -56,7 +56,7 @@ export function Signup() {
           />
           <span className="field-hint">8–72 characters, not a common password</span>
         </label>
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
         <PrivacyNote compact />
         <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? "Creating account..." : "Sign up"}
