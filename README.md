@@ -1,6 +1,5 @@
-m 
 
-# JDC — Just a Daily Companion
+# JDC - Just a Daily Companion
 
 A personal life intelligence application. Users write natural-language updates about
 their lives; the system converts those updates into structured events, tracks life
@@ -215,13 +214,13 @@ backend directly.
 
 ### SOLID, where it shows up
 
-| Principle | In this codebase |
-|---|---|
+| Principle                       | In this codebase                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **S**ingle responsibility | Routes only translate HTTP; `AuthService` (credentials) and `AccountService` (export/delete) are separate because they change for different reasons; `GoogleOAuthClient` only talks to Google; `LoginThrottle` holds the lockout policy while `RateLimiter` only counts. Frontend: pages orchestrate, `components/updates/*` each render one thing, `useAsync` owns loading/error/retry |
-| **O**pen/closed | `EmailSender`: add SendGrid/SES by writing a class, no caller changes. Mock AI narratives are a registry (`@narrative("kind")`): new kinds don't touch `generate_narrative`. New AI providers implement `AIProvider` |
-| **L**iskov substitution | Every `OwnedRepository` subclass (updates, goals, events) behaves the same for `get_owned`; any `EmailSender` / `PasswordHasher` / `AIProvider` can replace another (the tests use in-memory fakes in exactly those slots) |
-| **I**nterface segregation | Small `Protocol`s with only what callers use: `PasswordHasher` (hash/verify/burn), `EmailSender` (send), `OAuthProvider` (authorization_url/fetch_profile) |
-| **D**ependency inversion | Services receive their repositories, hasher, throttle, email sender and AI provider (`api/deps.py` wires the real ones). Tests swap them with `app.dependency_overrides` or plain constructor arguments; no monkeypatching of module internals |
+| **O**pen/closed           | `EmailSender`: add SendGrid/SES by writing a class, no caller changes. Mock AI narratives are a registry (`@narrative("kind")`): new kinds don't touch `generate_narrative`. New AI providers implement `AIProvider`                                                                                                                                                                          |
+| **L**iskov substitution   | Every `OwnedRepository` subclass (updates, goals, events) behaves the same for `get_owned`; any `EmailSender` / `PasswordHasher` / `AIProvider` can replace another (the tests use in-memory fakes in exactly those slots)                                                                                                                                                                  |
+| **I**nterface segregation | Small `Protocol`s with only what callers use: `PasswordHasher` (hash/verify/burn), `EmailSender` (send), `OAuthProvider` (authorization_url/fetch_profile)                                                                                                                                                                                                                                    |
+| **D**ependency inversion  | Services receive their repositories, hasher, throttle, email sender and AI provider (`api/deps.py` wires the real ones). Tests swap them with `app.dependency_overrides` or plain constructor arguments; no monkeypatching of module internals                                                                                                                                                    |
 
 ### Adding a feature the same way
 
@@ -566,8 +565,8 @@ A full walkthrough of the product loop, using either the UI at
 9. **Theme**: the button in the top bar switches System → Light → Dark; the choice
    is remembered in this browser. **Tab** on any page first offers *Skip to content*.
 10. **Account** (click your name in the top bar): change or set a password, export
-   all your data as JSON, or permanently delete your account. Changing the password
-   signs you out on other devices.
+    all your data as JSON, or permanently delete your account. Changing the password
+    signs you out on other devices.
 11. Keep logging updates over multiple days — scores, trends, and forecasts become
     more meaningful as more evidence accumulates (a single day of data will
     correctly show "not enough data" for most trends, by design).
@@ -631,28 +630,28 @@ Over the limit, the API returns **429** with a `Retry-After` header.
 
 ### Backend (`backend/.env`, copy from `.env.example`)
 
-| Variable                                                                          | Default                                               | Notes                                                              |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| Variable                                                                          | Default                                               | Notes                                                                         |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `DATABASE_URL`                                                                  | `sqlite:///./ilc.db`                                | Or PostgreSQL: `postgresql+psycopg://user:pass@host:5432/db` (tested in CI) |
-| `LOG_LEVEL`                                                                     | `INFO`                                              | App log level (`DEBUG`, `INFO`, `WARNING`, ...)                    |
-| `ENVIRONMENT`                                                                   | `development`                                       | Anything else (e.g.`production`) refuses a weak `SECRET_KEY`   |
-| `SECRET_KEY`                                                                    | `dev-only-secret-change-me`                         | Signs login tokens. Public default: set a long random one          |
-| `FRONTEND_URL`                                                                  | `http://localhost:5173`                             | Where Google sign-in and reset emails send people back to          |
-| `ACCESS_TOKEN_EXPIRE_MINUTES`                                                   | `10080` (7 days)                                    | JWT lifetime                                                       |
-| `CORS_ORIGINS`                                                                  | `http://localhost:5173`                             | Comma-separated list of allowed browser origins                    |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                   | *(blank)*                                           | Leave blank to disable Google sign-in (returns 501, doesn't crash) |
-| `GOOGLE_REDIRECT_URI`                                                           | `http://localhost:8000/api/v1/auth/google/callback` | Must match the Google Cloud Console OAuth client config            |
-| `AI_PROVIDER`                                                                   | `mock`                                              | `mock` (no key needed), `groq` or `openai`                   |
-| `GROQ_API_KEY`                                                                  | *(blank)*                                           | Required only if`AI_PROVIDER=groq`                               |
-| `GROQ_MODEL`                                                                    | `openai/gpt-oss-120b`                               | Any Groq chat model that supports JSON mode                        |
-| `OPENAI_API_KEY`                                                                | *(blank)*                                           | Required only if`AI_PROVIDER=openai`                             |
-| `OPENAI_MODEL`                                                                  | `gpt-4o-mini`                                       | Any OpenAI chat-completions-compatible model                       |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | *(blank)* / `587`                                 | Email for reset links; blank = link printed in the backend log     |
-| `PASSWORD_RESET_EXPIRE_MINUTES`                                                 | `30`                                                | How long a reset link works                                        |
-| `RATE_LIMIT_AUTH_PER_MINUTE`                                                    | `10`                                                | Login / sign-up / reset requests per IP                            |
-| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES` | `5` / `15` | Wrong passwords per account before login pauses |
-| `MAX_REQUEST_BYTES` | `1000000` | Larger request bodies are refused with 413 |
-| `RATE_LIMIT_AI_PER_MINUTE`                                                      | `20`                                                | AI-backed requests per user                                        |
+| `LOG_LEVEL`                                                                     | `INFO`                                              | App log level (`DEBUG`, `INFO`, `WARNING`, ...)                         |
+| `ENVIRONMENT`                                                                   | `development`                                       | Anything else (e.g.`production`) refuses a weak `SECRET_KEY`              |
+| `SECRET_KEY`                                                                    | `dev-only-secret-change-me`                         | Signs login tokens. Public default: set a long random one                     |
+| `FRONTEND_URL`                                                                  | `http://localhost:5173`                             | Where Google sign-in and reset emails send people back to                     |
+| `ACCESS_TOKEN_EXPIRE_MINUTES`                                                   | `10080` (7 days)                                    | JWT lifetime                                                                  |
+| `CORS_ORIGINS`                                                                  | `http://localhost:5173`                             | Comma-separated list of allowed browser origins                               |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                   | *(blank)*                                           | Leave blank to disable Google sign-in (returns 501, doesn't crash)            |
+| `GOOGLE_REDIRECT_URI`                                                           | `http://localhost:8000/api/v1/auth/google/callback` | Must match the Google Cloud Console OAuth client config                       |
+| `AI_PROVIDER`                                                                   | `mock`                                              | `mock` (no key needed), `groq` or `openai`                              |
+| `GROQ_API_KEY`                                                                  | *(blank)*                                           | Required only if`AI_PROVIDER=groq`                                          |
+| `GROQ_MODEL`                                                                    | `openai/gpt-oss-120b`                               | Any Groq chat model that supports JSON mode                                   |
+| `OPENAI_API_KEY`                                                                | *(blank)*                                           | Required only if`AI_PROVIDER=openai`                                        |
+| `OPENAI_MODEL`                                                                  | `gpt-4o-mini`                                       | Any OpenAI chat-completions-compatible model                                  |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | *(blank)* / `587`                                 | Email for reset links; blank = link printed in the backend log                |
+| `PASSWORD_RESET_EXPIRE_MINUTES`                                                 | `30`                                                | How long a reset link works                                                   |
+| `RATE_LIMIT_AUTH_PER_MINUTE`                                                    | `10`                                                | Login / sign-up / reset requests per IP                                       |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES`                                | `5` / `15`                                        | Wrong passwords per account before login pauses                               |
+| `MAX_REQUEST_BYTES`                                                             | `1000000`                                           | Larger request bodies are refused with 413                                    |
+| `RATE_LIMIT_AI_PER_MINUTE`                                                      | `20`                                                | AI-backed requests per user                                                   |
 
 ### Frontend (`frontend/.env.local`, copy from `.env.example`)
 
@@ -732,6 +731,7 @@ These tests don't drive a real browser; click through `npm run dev` →
 What protects a JDC account and its data, and what to do when deploying.
 
 **Accounts and logins**
+
 - Passwords: bcrypt-hashed, 8–72 characters, and common passwords, passwords built
   from the email address, or single repeated characters are refused.
 - Login: per-IP rate limit (10/min) **plus** a per-account lockout (5 wrong passwords
@@ -746,6 +746,7 @@ What protects a JDC account and its data, and what to do when deploying.
 - Password checks while signed in (change password, delete account) are rate-limited too.
 
 **Requests and responses**
+
 - Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
   `Referrer-Policy: no-referrer`, a `Permissions-Policy`, and (API) a deny-all CSP and
   `Cache-Control: no-store`; outside development also HSTS.
@@ -756,6 +757,7 @@ What protects a JDC account and its data, and what to do when deploying.
   `localStorage`, so this is the main defence against injected scripts stealing it.
 
 **Data and secrets**
+
 - Every API query is scoped to the signed-in user; Ask JDC's tools are read-only and
   bound to that user. Export and permanent deletion are on the Account page.
 - `.env` is git-ignored; the repository history has been checked for leaked keys.
@@ -765,6 +767,7 @@ What protects a JDC account and its data, and what to do when deploying.
   vulnerability in a dependency fails the build.
 
 **Deployment checklist**
+
 1. `ENVIRONMENT=production`, a long random `SECRET_KEY`, and real `SMTP_*` settings.
 2. Serve both the app and the API over **HTTPS** only.
 3. `CORS_ORIGINS` and `FRONTEND_URL` set to the real site address; build the frontend
@@ -777,6 +780,7 @@ What protects a JDC account and its data, and what to do when deploying.
    a shared store (e.g. Redis).
 
 **Known trade-offs**
+
 - Sign-up says "Email already registered", which reveals that an account exists; that's
   the usual trade-off for a clear sign-up error.
 - The account lockout can be triggered by someone who knows your email (temporarily
