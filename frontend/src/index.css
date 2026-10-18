@@ -396,6 +396,25 @@ h3 {
   cursor: pointer;
 }
 
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-wrapper input {
+  padding-right: 2.6rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.35rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  z-index: 2;
+}
+
 .icon-btn:hover:not(:disabled) {
   border-color: var(--primary);
   color: var(--primary);

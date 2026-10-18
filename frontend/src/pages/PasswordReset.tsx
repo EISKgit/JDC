@@ -5,6 +5,7 @@ import { ApiError } from "../api/client";
 import { authApi } from "../api/endpoints";
 import { errorMessage } from "../hooks/useAsync";
 import { AuthLayout } from "../components/AuthLayout";
+import { PasswordInput } from "../components/PasswordInput";
 import { useAuth } from "../context/auth";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -103,22 +104,23 @@ export function ResetPassword() {
         ) : (
           <>
             <p className="auth-subtitle">You'll be signed in right after.</p>
-            <label>
-              New password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={8}
-                maxLength={72}
-                required
-              />
-              <span className="field-hint">8–72 characters, not a common password</span>
-            </label>
-            <label>
-              Confirm new password
-              <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-            </label>
+            <PasswordInput
+              label="New password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              maxLength={72}
+              required
+              autoComplete="new-password"
+              hint="8–72 characters, not a common password"
+            />
+            <PasswordInput
+              label="Confirm new password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
             {error && <p className="form-error" role="alert">{error}</p>}
             <button type="submit" className="btn-primary" disabled={submitting}>
               {submitting ? "Saving..." : "Save password"}

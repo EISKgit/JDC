@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ApiError, takeSessionExpired } from "../api/client";
+import { PasswordInput } from "../components/PasswordInput";
 import { AuthLayout } from "../components/AuthLayout";
 import { GoogleButton } from "../components/Feedback";
 import { useAuth } from "../context/auth";
@@ -45,20 +46,18 @@ export function Login() {
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label>
-          <span className="label-row">
-            Password
+        <PasswordInput
+          label="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+          rowExtra={
             <Link to="/forgot-password" className="label-link">
               Forgot password?
             </Link>
-          </span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
+          }
+        />
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? "Logging in..." : "Log in"}

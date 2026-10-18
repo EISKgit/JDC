@@ -1,6 +1,7 @@
 import { KeyRound } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { authApi } from "../../api/endpoints";
+import { PasswordInput } from "../PasswordInput";
 import { useAuth } from "../../context/auth";
 import { errorMessage } from "../../hooks/useAsync";
 
@@ -40,23 +41,24 @@ export function ChangePassword() {
         <p className="hint">You signed up with Google. A password lets you log in with your email too.</p>
       )}
       {!settingFirstPassword && (
-        <label>
-          Current password
-          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
-        </label>
-      )}
-      <label>
-        New password
-        <input
-          type="password"
-          value={next}
-          onChange={(e) => setNext(e.target.value)}
-          minLength={8}
-          maxLength={72}
+        <PasswordInput
+          label="Current password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
           required
+          autoComplete="current-password"
         />
-        <span className="field-hint">8–72 characters, not a common password</span>
-      </label>
+      )}
+      <PasswordInput
+        label="New password"
+        value={next}
+        onChange={(e) => setNext(e.target.value)}
+        minLength={8}
+        maxLength={72}
+        required
+        autoComplete="new-password"
+        hint="8–72 characters, not a common password"
+      />
       {message && <p className={message.ok ? "form-success" : "form-error"} role={message.ok ? "status" : "alert"}>{message.text}</p>}
       <button type="submit" className="btn-primary" disabled={saving}>
         {saving ? "Saving..." : "Save password"}

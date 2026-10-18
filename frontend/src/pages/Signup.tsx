@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { AuthLayout } from "../components/AuthLayout";
 import { GoogleButton, PrivacyNote } from "../components/Feedback";
+import { PasswordInput } from "../components/PasswordInput";
 import { useAuth } from "../context/auth";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -44,18 +45,16 @@ export function Signup() {
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            maxLength={72}
-            required
-          />
-          <span className="field-hint">8–72 characters, not a common password</span>
-        </label>
+        <PasswordInput
+          label="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          minLength={8}
+          maxLength={72}
+          required
+          autoComplete="new-password"
+          hint="8–72 characters, not a common password"
+        />
         {error && <p className="form-error" role="alert">{error}</p>}
         <PrivacyNote compact />
         <button type="submit" className="btn-primary" disabled={submitting}>

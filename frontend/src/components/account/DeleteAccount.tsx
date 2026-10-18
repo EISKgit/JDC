@@ -2,6 +2,7 @@ import { Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../api/endpoints";
+import { PasswordInput } from "../PasswordInput";
 import { useAuth } from "../../context/auth";
 import { errorMessage } from "../../hooks/useAsync";
 
@@ -43,10 +44,13 @@ export function DeleteAccount() {
       ) : (
         <form className="form-stack" onSubmit={handleDelete}>
           {user?.has_password && (
-            <label>
-              Your password
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </label>
+            <PasswordInput
+              label="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
           )}
           <label>
             Type DELETE to confirm
