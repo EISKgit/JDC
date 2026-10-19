@@ -1,17 +1,17 @@
 /* ---------- Design tokens ---------- */
 :root {
   --bg: #f5f6fb;
-  --bg-glow-1: rgba(99, 102, 241, 0.12);
-  --bg-glow-2: rgba(168, 85, 247, 0.1);
+  --bg-glow-1: rgba(37, 99, 235, 0.12);
+  --bg-glow-2: rgba(191, 219, 254, 0.1);
   --surface: #ffffff;
   --surface-muted: #f8f9fc;
   --border: #e6e8f0;
   --text: #171a2b;
   --text-muted: #646b82;
-  --primary: #5b5bf0;
-  --primary-hover: #4a48d8;
-  --primary-soft: rgba(91, 91, 240, 0.1);
-  --gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: rgba(37, 99, 235, 0.1);
+  --gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   --good: #12a150;
   --good-bg: #e8f8ef;
   --mid: #c98a04;
@@ -39,16 +39,16 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0e1018;
-    --bg-glow-1: rgba(99, 102, 241, 0.16);
-    --bg-glow-2: rgba(168, 85, 247, 0.12);
+    --bg-glow-1: rgba(37, 99, 235, 0.16);
+    --bg-glow-2: rgba(191, 219, 254, 0.12);
     --surface: #171a26;
     --surface-muted: #1d2130;
     --border: #2a2f42;
     --text: #e9ebf5;
     --text-muted: #9aa1b9;
-    --primary: #8183ff;
-    --primary-hover: #9a9cff;
-    --primary-soft: rgba(129, 131, 255, 0.14);
+    --primary: #60a5fa;
+    --primary-hover: #93c5fd;
+    --primary-soft: rgba(96, 165, 250, 0.14);
     --good-bg: #10301f;
     --mid-bg: #33290c;
     --low-bg: #3a1519;
@@ -61,16 +61,16 @@
 
 :root[data-theme="dark"] {
   --bg: #0e1018;
-  --bg-glow-1: rgba(99, 102, 241, 0.16);
-  --bg-glow-2: rgba(168, 85, 247, 0.12);
+  --bg-glow-1: rgba(37, 99, 235, 0.16);
+  --bg-glow-2: rgba(191, 219, 254, 0.12);
   --surface: #171a26;
   --surface-muted: #1d2130;
   --border: #2a2f42;
   --text: #e9ebf5;
   --text-muted: #9aa1b9;
-  --primary: #8183ff;
-  --primary-hover: #9a9cff;
-  --primary-soft: rgba(129, 131, 255, 0.14);
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-soft: rgba(96, 165, 250, 0.14);
   --good-bg: #10301f;
   --mid-bg: #33290c;
   --low-bg: #3a1519;
@@ -318,7 +318,7 @@ h3 {
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
   transition:
     transform 0.15s,
     box-shadow 0.15s,
@@ -328,7 +328,7 @@ h3 {
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
   filter: brightness(1.05);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
 }
 
 .btn-primary:disabled {
@@ -1512,7 +1512,7 @@ h3 {
   border-radius: 14px;
   background: var(--gradient);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
   margin-bottom: 0.4rem;
 }
 
