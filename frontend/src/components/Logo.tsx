@@ -4,7 +4,8 @@ export function Logo({ size = 32 }: { size?: number }) {
       <defs>
         <linearGradient id="jdc-logo-gradient" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="100%" stopColor="#1d4ed8" />
+          <stop offset="50%" stopColor="#22c55e" />
+          <stop offset="100%" stopColor="#ef4444" />
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="9" fill="url(#jdc-logo-gradient)" />

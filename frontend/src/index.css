@@ -1,22 +1,23 @@
 /* ---------- Design tokens ---------- */
 :root {
-  --bg: #f5f6fb;
+  --bg: #ffffff;
   --bg-glow-1: rgba(37, 99, 235, 0.12);
-  --bg-glow-2: rgba(191, 219, 254, 0.1);
-  --surface: #ffffff;
-  --surface-muted: #f8f9fc;
+  --bg-glow-2: rgba(34, 197, 94, 0.1);
+  --surface: #f8f9fc;
   --border: #e6e8f0;
-  --text: #171a2b;
-  --text-muted: #646b82;
+  --text: #000000;
+  --text-muted: #374151;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-soft: rgba(37, 99, 235, 0.1);
-  --gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  --good: #12a150;
+  --secondary: #22c55e;
+  --accent: #ef4444;
+  --gradient: linear-gradient(135deg, #2563eb 0%, #22c55e 50%, #ef4444 100%);
+  --good: #22c55e;
   --good-bg: #e8f8ef;
   --mid: #c98a04;
   --mid-bg: #fdf6e3;
-  --low: #dc3545;
+  --low: #ef4444;
   --low-bg: #fdecee;
   --cat-health: #10b981;
   --cat-career: #3b82f6;
@@ -38,17 +39,20 @@
 /* Dark palette: follows the system unless the user picked a theme (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e1018;
+    --bg: #000000;
     --bg-glow-1: rgba(37, 99, 235, 0.16);
-    --bg-glow-2: rgba(191, 219, 254, 0.12);
+    --bg-glow-2: rgba(34, 197, 94, 0.12);
     --surface: #171a26;
     --surface-muted: #1d2130;
     --border: #2a2f42;
-    --text: #e9ebf5;
+    --text: #ffffff;
     --text-muted: #9aa1b9;
     --primary: #60a5fa;
     --primary-hover: #93c5fd;
     --primary-soft: rgba(96, 165, 250, 0.14);
+    --secondary: #4ade80;
+    --accent: #f87171;
+    --good: #4ade80;
     --good-bg: #10301f;
     --mid-bg: #33290c;
     --low-bg: #3a1519;
@@ -60,17 +64,20 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #0e1018;
+  --bg: #000000;
   --bg-glow-1: rgba(37, 99, 235, 0.16);
-  --bg-glow-2: rgba(191, 219, 254, 0.12);
+  --bg-glow-2: rgba(34, 197, 94, 0.12);
   --surface: #171a26;
   --surface-muted: #1d2130;
   --border: #2a2f42;
-  --text: #e9ebf5;
+  --text: #ffffff;
   --text-muted: #9aa1b9;
   --primary: #60a5fa;
   --primary-hover: #93c5fd;
   --primary-soft: rgba(96, 165, 250, 0.14);
+  --secondary: #4ade80;
+  --accent: #f87171;
+  --good: #4ade80;
   --good-bg: #10301f;
   --mid-bg: #33290c;
   --low-bg: #3a1519;
