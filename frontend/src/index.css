@@ -1,23 +1,23 @@
 /* ---------- Design tokens ---------- */
 :root {
   --bg: #ffffff;
-  --bg-glow-1: rgba(37, 99, 235, 0.12);
-  --bg-glow-2: rgba(37, 99, 235, 0.08);
-  --surface: #f8f9fc;
-  --border: #e6e8f0;
-  --text: #000000;
-  --text-muted: #374151;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-soft: rgba(37, 99, 235, 0.1);
-  --good: #22c55e;
-  --good-bg: #e8f8ef;
+  --bg-glow-1: rgba(79, 70, 229, 0.10);
+  --bg-glow-2: rgba(79, 70, 229, 0.06);
+  --surface: #f8fafc;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: rgba(79, 70, 229, 0.10);
+  --good: #10b981;
+  --good-bg: #ecfdf5;
   --mid: #c98a04;
   --mid-bg: #fdf6e3;
   --low: #ef4444;
-  --low-bg: #fdecee;
+  --low-bg: #fef2f2;
   --cat-health: #10b981;
-  --cat-career: #3b82f6;
+  --cat-career: #4f46e5;
   --cat-finance: #f59e0b;
   --cat-relationships: #ec4899;
   --cat-learning: #8b5cf6;
@@ -25,10 +25,10 @@
   --cat-lifestyle: #f97316;
   --radius: 16px;
   /* Coloured text is mixed towards this so it stays readable (WCAG AA) on light/dark surfaces. */
-  --ink-mix: #000000;
+  --ink-mix: #0f172a;
   --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(23, 26, 43, 0.04), 0 4px 16px rgba(23, 26, 43, 0.06);
-  --shadow-lg: 0 12px 40px rgba(76, 70, 229, 0.18);
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 16px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 12px 40px rgba(79, 70, 229, 0.15);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
@@ -36,48 +36,48 @@
 /* Dark palette: follows the system unless the user picked a theme (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000;
-    --bg-glow-1: rgba(37, 99, 235, 0.16);
-    --bg-glow-2: rgba(37, 99, 235, 0.1);
-    --surface: #171a26;
-    --surface-muted: #1d2130;
-    --border: #2a2f42;
-    --text: #ffffff;
-    --text-muted: #9aa1b9;
-    --primary: #60a5fa;
-    --primary-hover: #93c5fd;
-    --primary-soft: rgba(96, 165, 250, 0.14);
-    --good: #4ade80;
-    --good-bg: #10301f;
+    --bg: #020617;
+    --bg-glow-1: rgba(79, 70, 229, 0.16);
+    --bg-glow-2: rgba(79, 70, 229, 0.10);
+    --surface: #0f172a;
+    --surface-muted: #1e293b;
+    --border: #1e293b;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-soft: rgba(129, 140, 248, 0.14);
+    --good: #34d399;
+    --good-bg: #022c22;
     --mid-bg: #33290c;
-    --low-bg: #3a1519;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
+    --low-bg: #450a0a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
-    --ink-mix: #ffffff;
+    --ink-mix: #f8fafc;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #000000;
-  --bg-glow-1: rgba(37, 99, 235, 0.16);
-  --bg-glow-2: rgba(37, 99, 235, 0.1);
-  --surface: #171a26;
-  --surface-muted: #1d2130;
-  --border: #2a2f42;
-  --text: #ffffff;
-  --text-muted: #9aa1b9;
-  --primary: #60a5fa;
-  --primary-hover: #93c5fd;
-  --primary-soft: rgba(96, 165, 250, 0.14);
-  --good: #4ade80;
-  --good-bg: #10301f;
+  --bg: #020617;
+  --bg-glow-1: rgba(79, 70, 229, 0.16);
+  --bg-glow-2: rgba(79, 70, 229, 0.10);
+  --surface: #0f172a;
+  --surface-muted: #1e293b;
+  --border: #1e293b;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary: #818cf8;
+  --primary-hover: #a5b4fc;
+  --primary-soft: rgba(129, 140, 248, 0.14);
+  --good: #34d399;
+  --good-bg: #022c22;
   --mid-bg: #33290c;
-  --low-bg: #3a1519;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --low-bg: #450a0a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
-  --ink-mix: #ffffff;
+  --ink-mix: #f8fafc;
 }
 
 /* ---------- Base ---------- */
