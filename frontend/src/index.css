@@ -1,16 +1,16 @@
 /* ---------- Design tokens ---------- */
 :root {
   --bg: #ffffff;
-  --bg-glow-1: rgba(99, 102, 241, 0.12);
-  --bg-glow-2: rgba(6, 182, 212, 0.08);
+  --bg-glow-1: rgba(37, 99, 235, 0.08);
+  --bg-glow-2: rgba(59, 130, 246, 0.06);
   --surface: #f8fafc;
   --border: #e2e8f0;
   --text: #0f172a;
   --text-muted: #64748b;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-soft: rgba(99, 102, 241, 0.10);
-  --gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%);
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: rgba(37, 99, 235, 0.08);
+  --gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
   --good: #10b981;
   --good-bg: #ecfdf5;
   --mid: #c98a04;
@@ -29,7 +29,7 @@
   --ink-mix: #0f172a;
   --radius-sm: 10px;
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 16px rgba(15, 23, 42, 0.07);
-  --shadow-lg: 0 12px 40px rgba(99, 102, 241, 0.25);
+  --shadow-lg: 0 12px 40px rgba(37, 99, 235, 0.15);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
@@ -38,16 +38,16 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #020617;
-    --bg-glow-1: rgba(99, 102, 241, 0.20);
-    --bg-glow-2: rgba(6, 182, 212, 0.15);
+    --bg-glow-1: rgba(37, 99, 235, 0.12);
+    --bg-glow-2: rgba(59, 130, 246, 0.08);
     --surface: #0f172a;
     --surface-muted: #1e293b;
     --border: #1e293b;
     --text: #f8fafc;
     --text-muted: #94a3b8;
-    --primary: #a5b4fc;
-    --primary-hover: #c4b5fd;
-    --primary-soft: rgba(165, 180, 252, 0.15);
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --primary-soft: rgba(59, 130, 246, 0.12);
     --good: #34d399;
     --good-bg: #022c22;
     --mid-bg: #33290c;
@@ -61,16 +61,16 @@
 
 :root[data-theme="dark"] {
   --bg: #020617;
-  --bg-glow-1: rgba(99, 102, 241, 0.20);
-  --bg-glow-2: rgba(6, 182, 212, 0.15);
+  --bg-glow-1: rgba(37, 99, 235, 0.12);
+  --bg-glow-2: rgba(59, 130, 246, 0.08);
   --surface: #0f172a;
   --surface-muted: #1e293b;
   --border: #1e293b;
   --text: #f8fafc;
   --text-muted: #94a3b8;
-  --primary: #a5b4fc;
-  --primary-hover: #c4b5fd;
-  --primary-soft: rgba(165, 180, 252, 0.15);
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-soft: rgba(59, 130, 246, 0.12);
   --good: #34d399;
   --good-bg: #022c22;
   --mid-bg: #33290c;
