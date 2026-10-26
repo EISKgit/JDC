@@ -2630,3 +2630,66 @@ main:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 4px var(--primary-soft);
 }
+
+/* ---------- Profile picture picker ---------- */
+.profile-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.profile-picker-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 110px;
+  height: 110px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-picker-trigger:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.profile-picker-trigger:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.profile-picker-current {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  object-fit: cover;
+}
+
+.profile-picker-trigger .avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 1.5rem;
+}
+
+.profile-picker-trigger svg {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  background: var(--surface);
+  padding: 2px;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+}
+
+.profile-picker-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+

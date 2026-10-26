@@ -25,6 +25,7 @@ from app.schemas.auth import (
     ChangePassword,
     DeleteAccount,
     ForgotPassword,
+    ProfilePictureIn,
     ResetPassword,
     Token,
     UserCreate,
@@ -57,6 +58,16 @@ def login(payload: UserLogin, auth: AuthService = Depends(get_auth_service)) -> 
 @router.get("/me", response_model=UserOut)
 def read_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.put("/me/profile-picture", response_model=UserOut)
+def update_my_profile_picture(
+    payload: ProfilePictureIn,
+    current_user: User = Depends(get_current_user),
+    accounts: AccountService = Depends(get_account_service),
+) -> User:
+    """Set (or clear) the signed-in user's profile picture."""
+    return accounts.update_profile_picture(current_user, payload.profile_picture_url)
 
 
 # ---------------------------------------------------------------- passwords and sessions

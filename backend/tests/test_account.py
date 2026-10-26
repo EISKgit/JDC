@@ -268,3 +268,52 @@ def test_browser_can_read_export_filename_and_retry_after(client):
     response = client.get(f"{API}/auth/me/export", headers=headers)
     exposed = response.headers["access-control-expose-headers"].lower()
     assert "content-disposition" in exposed and "retry-after" in exposed
+
+
+# ------------------------------------------------------------ profile picture
+
+VALID_IMAGE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+
+def test_profile_picture_can_be_set_and_read(client):
+    headers = register(client)
+    response = client.put(
+        f"{API}/auth/me/profile-picture",
+        headers=headers,
+        json={"profile_picture_url": VALID_IMAGE},
+    )
+    assert response.status_code == 200
+    me = response.json()
+    assert me["profile_picture_url"] == VALID_IMAGE
+
+    # It shows up on GET /auth/me too.
+    me_again = client.get(f"{API}/auth/me", headers=headers).json()
+    assert me_again["profile_picture_url"] == VALID_IMAGE
+
+
+def test_profile_picture_can_be_cleared(client):
+    headers = register(client)
+    client.put(
+        f"{API}/auth/me/profile-picture",
+        headers=headers,
+        json={"profile_picture_url": VALID_IMAGE},
+    )
+    response = client.put(
+        f"{API}/auth/me/profile-picture",
+        headers=headers,
+        json={"profile_picture_url": ""},
+    )
+    assert response.status_code == 200
+    assert response.json()["profile_picture_url"] is None
+
+
+def test_profile_picture_rejects_bad_urls(client):
+    headers = register(client)
+    for bad in ["not-a-url", "ftp://example.com/x.png", "data:text/plain;base64,abc"]:
+        response = client.put(
+            f"{API}/auth/me/profile-picture",
+            headers=headers,
+            json={"profile_picture_url": bad},
+        )
+        assert response.status_code == 422, bad
+

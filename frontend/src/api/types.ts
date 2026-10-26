@@ -18,6 +18,7 @@ export interface User {
   id: number;
   email: string;
   full_name: string | null;
+  profile_picture_url: string | null;
   created_at: string;
   /** False for accounts that only ever signed in with Google. */
   has_password: boolean;

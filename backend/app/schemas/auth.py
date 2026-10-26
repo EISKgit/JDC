@@ -32,10 +32,28 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     full_name: str | None
+    profile_picture_url: str | None = None
     created_at: UTCDateTime
     has_password: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class ProfilePictureIn(BaseModel):
+    profile_picture_url: str = Field(max_length=2048)
+
+    @field_validator("profile_picture_url")
+    @classmethod
+    def _validate_image_url(cls, value: str) -> str:
+        value = value.strip()
+        # An empty string clears the picture; the service turns it into NULL.
+        if not value:
+            return value
+        is_image_data_url = value.startswith("data:image/") and ";base64," in value
+        is_web_url = value.startswith(("http://", "https://"))
+        if not (is_image_data_url or is_web_url):
+            raise ValueError("Must be an image (data URL) or an http/https image address")
+        return value
 
 
 class Token(BaseModel):

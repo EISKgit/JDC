@@ -43,9 +43,13 @@ export function NavBar() {
         <span className="navbar-spacer" />
         <ThemeToggle />
         <Link to="/account" className="navbar-user" title={`${user.email} - account settings`}>
-          <span className="avatar" aria-hidden="true">
-            {displayName.charAt(0).toUpperCase()}
-          </span>
+          {user.profile_picture_url ? (
+            <img src={user.profile_picture_url} alt="" className="avatar" />
+          ) : (
+            <span className="avatar" aria-hidden="true">
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+          )}
           <span className="navbar-user-name">{displayName}</span>
         </Link>
         <button type="button" className="btn-secondary btn-small navbar-logout" onClick={handleLogout}>

@@ -38,6 +38,8 @@ export const authApi = {
     api.post<Token>("/auth/reset-password", { token, new_password: newPassword }),
   logoutEverywhere: () => api.post<Token>("/auth/logout-all"),
   deleteAccount: (password: string | null, confirm: string) => api.delete("/auth/me", { password, confirm }),
+  updateProfilePicture: (profilePictureUrl: string) =>
+    api.put<User>("/auth/me/profile-picture", { profile_picture_url: profilePictureUrl }),
 };
 
 export const configApi = {

@@ -41,3 +41,10 @@ class AccountService:
             raise InvalidInput("Password is incorrect")
         self.session.delete(user)  # cascades: profile, goals, updates -> events
         self.session.commit()
+
+    def update_profile_picture(self, user: User, profile_picture_url: str) -> User:
+        """Set (or clear, with an empty string) the user's profile picture URL."""
+        user.profile_picture_url = profile_picture_url or None
+        self.session.commit()
+        self.session.refresh(user)
+        return user

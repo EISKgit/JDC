@@ -3,6 +3,7 @@ import { useState } from "react";
 import { downloadFile } from "../api/client";
 import { ChangePassword } from "../components/account/ChangePassword";
 import { DeleteAccount } from "../components/account/DeleteAccount";
+import { ProfilePicture } from "../components/account/ProfilePicture";
 import { SignOutEverywhere } from "../components/account/SignOutEverywhere";
 import { PrivacyNote } from "../components/Feedback";
 import { useAuth } from "../context/auth";
@@ -39,7 +40,11 @@ export function Account() {
 
       <section className="card account-summary">
         <span className="avatar avatar-large" aria-hidden="true">
-          {(user.full_name || user.email).charAt(0).toUpperCase()}
+          {user.profile_picture_url ? (
+            <img src={user.profile_picture_url} alt="" />
+          ) : (
+            (user.full_name || user.email).charAt(0).toUpperCase()
+          )}
         </span>
         <div>
           <strong>{user.full_name || "No name set"}</strong>
@@ -49,6 +54,8 @@ export function Account() {
           </p>
         </div>
       </section>
+
+      <ProfilePicture />
 
       <ChangePassword />
 
