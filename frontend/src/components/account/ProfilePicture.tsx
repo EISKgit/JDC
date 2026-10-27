@@ -5,7 +5,7 @@ import { ApiError } from "../../api/client";
 import { useAuth } from "../../context/auth";
 
 /** Max width/height (px) the uploaded image is resized to before it's uploaded. */
-const MAX_IMAGE_SIZE = 512;
+const MAX_IMAGE_SIZE = 256;
 
 /** Resize an image file to a JPEG data URL no larger than MAX_IMAGE_SIZE on each side. */
 function resizeImage(file: File): Promise<string> {
@@ -27,7 +27,7 @@ function resizeImage(file: File): Promise<string> {
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("Could not resize the image"));
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
+      resolve(canvas.toDataURL("image/jpeg", 0.6));
     };
     img.onerror = () => reject(new Error("Could not read the image file"));
     img.src = URL.createObjectURL(file);

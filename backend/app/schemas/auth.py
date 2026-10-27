@@ -40,7 +40,7 @@ class UserOut(BaseModel):
 
 
 class ProfilePictureIn(BaseModel):
-    profile_picture_url: str = Field(max_length=2048)
+    profile_picture_url: str = Field(max_length=1_000_000)
 
     @field_validator("profile_picture_url")
     @classmethod
