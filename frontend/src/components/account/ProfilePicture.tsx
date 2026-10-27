@@ -1,8 +1,8 @@
 import { Image, ImageMinus, ImagePlus, RotateCcw } from "lucide-react";
-import { type FormEvent, useCallback, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { authApi } from "../../api/endpoints";
+import type { ApiError } from "../../api/client";
 import { useAuth } from "../../context/auth";
-import { errorMessage } from "../../hooks/useAsync";
 
 /** Max width/height (px) the uploaded image is resized to before it's uploaded. */
 const MAX_IMAGE_SIZE = 512;
@@ -63,10 +63,16 @@ export function ProfilePicture() {
       await refreshUser();
       setMessage({ ok: true, text: "Profile picture updated." });
     } catch (err) {
-      setMessage({ ok: false, text: errorMessage(err, "Could not update your profile picture") });
+      const apiMsg = err instanceof ApiError ? err.message : null;
+      setMessage({
+        ok: false,
+        text: apiMsg ?? (err instanceof Error ? err.message : "Could not update your profile picture"),
+      });
     } finally {
       setSaving(false);
-      e.currentTarget.value = "";
+      // Reset the input via the ref (e.currentTarget can be null after an await).
+      const input = fileInput.current;
+      if (input) input.value = "";
     }
   }
 
@@ -77,9 +83,13 @@ export function ProfilePicture() {
       .updateProfilePicture("")
       .then(() => refreshUser())
       .then(() => setMessage({ ok: true, text: "Profile picture removed." }))
-      .catch((err) =>
-        setMessage({ ok: false, text: errorMessage(err, "Could not remove your profile picture") })
-      )
+      .catch((err) => {
+        const apiMsg = err instanceof ApiError ? err.message : null;
+        setMessage({
+          ok: false,
+          text: apiMsg ?? (err instanceof Error ? err.message : "Could not remove your profile picture"),
+        });
+      })
       .finally(() => setSaving(false));
   }
 
