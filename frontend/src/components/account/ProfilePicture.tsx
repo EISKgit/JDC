@@ -1,7 +1,7 @@
 import { Image, ImageMinus, ImagePlus, RotateCcw } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
 import { authApi } from "../../api/endpoints";
-import type { ApiError } from "../../api/client";
+import { ApiError } from "../../api/client";
 import { useAuth } from "../../context/auth";
 
 /** Max width/height (px) the uploaded image is resized to before it's uploaded. */
