@@ -1,4 +1,4 @@
-import { Image, ImageMinus, ImagePlus, RotateCcw } from "lucide-react";
+import { Image as ImageIcon, ImageMinus, ImagePlus, RotateCcw } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
 import { authApi } from "../../api/endpoints";
 import { ApiError } from "../../api/client";
@@ -98,7 +98,7 @@ export function ProfilePicture() {
   return (
     <section className="card form-stack">
       <h2 className="card-heading">
-        <Image size={18} aria-hidden="true" />
+        <ImageIcon size={18} aria-hidden="true" />
         Profile picture
       </h2>
       <p>Choose a photo to show next to your name in the navbar and on your account page.</p>
