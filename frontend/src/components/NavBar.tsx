@@ -1,8 +1,10 @@
 import { LayoutDashboard, LogOut, MessageCircleQuestion, NotebookPen, Target, UserRound } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useAuth } from "../context/auth";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
+import { ProfilePictureViewer } from "./account/ProfilePictureViewer";
 
 const LINKS = [
   { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -15,6 +17,7 @@ const LINKS = [
 export function NavBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [viewingPicture, setViewingPicture] = useState(false);
 
   if (!user) return null;
 
@@ -44,7 +47,12 @@ export function NavBar() {
         <ThemeToggle />
         <Link to="/account" className="navbar-user" title={`${user.email} - account settings`}>
           {user.profile_picture_url ? (
-            <img src={user.profile_picture_url} alt="" className="avatar" />
+            <img
+              src={user.profile_picture_url}
+              alt=""
+              className="avatar"
+              onClick={() => setViewingPicture(true)}
+            />
           ) : (
             <span className="avatar" aria-hidden="true">
               {displayName.charAt(0).toUpperCase()}
@@ -52,6 +60,13 @@ export function NavBar() {
           )}
           <span className="navbar-user-name">{displayName}</span>
         </Link>
+
+        <ProfilePictureViewer
+          src={user.profile_picture_url!}
+          isOpen={viewingPicture}
+          onClose={() => setViewingPicture(false)}
+        />
+
         <button type="button" className="btn-secondary btn-small navbar-logout" onClick={handleLogout}>
           <LogOut size={14} aria-hidden="true" />
           <span className="navbar-logout-label">Log out</span>

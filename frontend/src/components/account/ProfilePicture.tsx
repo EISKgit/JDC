@@ -3,6 +3,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { authApi } from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { useAuth } from "../../context/auth";
+import { ProfilePictureViewer } from "./ProfilePictureViewer";
 
 /** Max width/height (px) the uploaded image is resized to before it's uploaded. */
 const MAX_IMAGE_SIZE = 256;
@@ -39,6 +40,7 @@ export function ProfilePicture() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [viewingPicture, setViewingPicture] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   function pickFile() {
@@ -106,7 +108,12 @@ export function ProfilePicture() {
       <div className="profile-picker">
         <label className="profile-picker-trigger" aria-hidden="true">
           {hasPicture ? (
-            <img src={user!.profile_picture_url} alt="" className="profile-picker-current" />
+            <img
+              src={user!.profile_picture_url}
+              alt=""
+              className="profile-picker-current"
+              onClick={() => setViewingPicture(true)}
+            />
           ) : (
             <span className="avatar avatar-large" aria-hidden="true">
               {(user?.full_name || user?.email || "?").charAt(0).toUpperCase()}
@@ -140,6 +147,12 @@ export function ProfilePicture() {
           {message.text}
         </p>
       )}
+
+      <ProfilePictureViewer
+        src={user!.profile_picture_url}
+        isOpen={viewingPicture}
+        onClose={() => setViewingPicture(false)}
+      />
     </section>
   );
 }

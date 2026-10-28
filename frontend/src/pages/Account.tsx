@@ -4,6 +4,7 @@ import { downloadFile } from "../api/client";
 import { ChangePassword } from "../components/account/ChangePassword";
 import { DeleteAccount } from "../components/account/DeleteAccount";
 import { ProfilePicture } from "../components/account/ProfilePicture";
+import { ProfilePictureViewer } from "../components/account/ProfilePictureViewer";
 import { SignOutEverywhere } from "../components/account/SignOutEverywhere";
 import { PrivacyNote } from "../components/Feedback";
 import { useAuth } from "../context/auth";
@@ -16,6 +17,7 @@ export function Account() {
   const { user } = useAuth();
   const [exportError, setExportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [viewingPicture, setViewingPicture] = useState(false);
 
   async function handleExport() {
     setExporting(true);
@@ -41,7 +43,11 @@ export function Account() {
       <section className="card account-summary">
         <span className="avatar avatar-large" aria-hidden="true">
           {user.profile_picture_url ? (
-            <img src={user.profile_picture_url} alt="" />
+            <img
+              src={user.profile_picture_url}
+              alt=""
+              onClick={() => setViewingPicture(true)}
+            />
           ) : (
             (user.full_name || user.email).charAt(0).toUpperCase()
           )}
@@ -76,6 +82,12 @@ export function Account() {
       </section>
 
       <DeleteAccount />
+
+      <ProfilePictureViewer
+        src={user.profile_picture_url!}
+        isOpen={viewingPicture}
+        onClose={() => setViewingPicture(false)}
+      />
     </div>
   );
 }
