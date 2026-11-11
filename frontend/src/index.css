@@ -1,16 +1,16 @@
 /* ---------- Design tokens ---------- */
 :root {
   --bg: #ffffff;
-  --bg-glow-1: rgba(37, 99, 235, 0.08);
-  --bg-glow-2: rgba(59, 130, 246, 0.06);
+  --bg-glow-1: rgba(37, 99, 235, 0.16);
+  --bg-glow-2: rgba(59, 130, 246, 0.14);
   --surface: #ffffff;
-  --border: #e2e8f0;
-  --text: #334155;
-  --text-muted: #64748b;
-  --primary: #60a5fa;
-  --primary-hover: #3b82f6;
-  --primary-soft: rgba(96, 165, 250, 0.10);
-  --gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  --border: #f1f5f9;
+  --text: #475569;
+  --text-muted: #94a3b8;
+  --primary: #93c5fd;
+  --primary-hover: #60a5fa;
+  --primary-soft: rgba(96, 165, 250, 0.18);
+  --gradient: linear-gradient(135deg, #3b82f6 0%, #818cf8 100%);
   --good: #10b981;
   --good-bg: #ecfdf5;
   --mid: #c98a04;
@@ -26,10 +26,10 @@
   --cat-lifestyle: #f97316;
   --radius: 16px;
   /* Coloured text is mixed towards this so it stays readable (WCAG AA) on light/dark surfaces. */
-  --ink-mix: #0f172a;
+  --ink-mix: #1e293b;
   --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 16px rgba(15, 23, 42, 0.07);
-  --shadow-lg: 0 12px 40px rgba(59, 130, 246, 0.15);
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 40px rgba(59, 130, 246, 0.25);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
@@ -37,17 +37,17 @@
 /* Dark palette: follows the system unless the user picked a theme (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #020617;
-    --bg-glow-1: rgba(37, 99, 235, 0.12);
-    --bg-glow-2: rgba(59, 130, 246, 0.08);
-    --surface: #0f172a;
-    --surface-muted: #1e293b;
-    --border: #1e293b;
+    --bg: #0f172a;
+    --bg-glow-1: rgba(37, 99, 235, 0.24);
+    --bg-glow-2: rgba(59, 130, 246, 0.20);
+    --surface: #1e293b;
+    --surface-muted: #334155;
+    --border: #334155;
     --text: #ffffff;
-    --text-muted: #94a3b8;
-    --primary: #3b82f6;
-    --primary-hover: #60a5fa;
-    --primary-soft: rgba(59, 130, 246, 0.12);
+    --text-muted: #cbd5e1;
+    --primary: #93c5fd;
+    --primary-hover: #bfdbfe;
+    --primary-soft: rgba(59, 130, 246, 0.24);
     --good: #34d399;
     --good-bg: #022c22;
     --mid-bg: #33290c;
@@ -60,17 +60,17 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #020617;
-  --bg-glow-1: rgba(37, 99, 235, 0.12);
-  --bg-glow-2: rgba(59, 130, 246, 0.08);
+  --bg: #0f172a;
+  --bg-glow-1: rgba(37, 99, 235, 0.24);
+  --bg-glow-2: rgba(59, 130, 246, 0.20);
   --surface: #334155;
   --surface-muted: #475569;
-  --border: #1e293b;
+  --border: #334155;
   --text: #ffffff;
-  --text-muted: #94a3b8;
-  --primary: #93c5fd;
-  --primary-hover: #bfdbfe;
-  --primary-soft: rgba(147, 197, 253, 0.14);
+  --text-muted: #cbd5e1;
+  --primary: #bfdbfe;
+  --primary-hover: #eff6ff;
+  --primary-soft: rgba(191, 219, 254, 0.24);
   --good: #34d399;
   --good-bg: #022c22;
   --mid-bg: #33290c;
