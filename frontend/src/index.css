@@ -1960,16 +1960,17 @@ h3 {
 
 .bubble-user {
   align-self: flex-end;
-  background: var(--gradient);
-  color: #fff;
+  background: var(--good-bg);
+  color: var(--ink-mix);
   border-bottom-right-radius: 4px;
   white-space: pre-wrap;
 }
 
 .bubble-assistant {
   align-self: flex-start;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--primary);
+  color: #fff;
+  border: none;
   border-bottom-left-radius: 4px;
   box-shadow: var(--shadow);
 }
@@ -1977,6 +1978,29 @@ h3 {
 .bubble-error {
   background: var(--low-bg);
   border-color: color-mix(in srgb, var(--low) 35%, transparent);
+}
+
+/* Dark mode chat bubble adjustments */
+@media (prefers-color-scheme: dark) {
+  .bubble-user {
+    background: color-mix(in srgb, var(--good) 18%, var(--surface));
+    color: var(--ink-mix);
+  }
+  .bubble-assistant {
+    background: var(--primary);
+    color: #0f172a;
+  }
+}
+
+[data-theme="dark"] {
+  .bubble-user {
+    background: color-mix(in srgb, var(--good) 18%, var(--surface));
+    color: var(--ink-mix);
+  }
+  .bubble-assistant {
+    background: var(--primary);
+    color: #0f172a;
+  }
 }
 
 .answer-text {
